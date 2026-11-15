@@ -72,8 +72,8 @@
  "precos": {
   "diasSemana": [
    0,
-   0,
-   0,
+   500,
+   600,
    0,
    0,
    0,
@@ -249,7 +249,16 @@
    "preco": null
   }
  ],
- "fotos": [],
+ "fotos": [
+  {
+   "arquivo": "fotos/mwi6or1g-0.jpg",
+   "legenda": ""
+  },
+  {
+   "arquivo": "fotos/mwi6oswt-1.jpg",
+   "legenda": ""
+  }
+ ],
  "reservas": [],
  "cripto": {
   "salt": "mqeOgIOggDtJSOztK5rOxQ==",
