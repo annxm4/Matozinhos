@@ -20,20 +20,19 @@
 
     <form id="fToken">
       <label>Chave de acesso do GitHub (token)
-        <input type="password" id="token" autocomplete="off" required placeholder="github_pat_...">
+        <input type="password" id="token" autocomplete="off" required placeholder="ghp_...">
       </label>
       <button class="bt bt-pri" type="submit">Continuar</button>
-      <details>
-        <summary>Como criar a chave (só na primeira vez)</summary>
+      <div class="passos">
+        <p><b>Ainda não tem a chave?</b></p>
         <ol>
-          <li>Entre no GitHub e abra <a target="_blank" rel="noopener" href="https://github.com/settings/personal-access-tokens/new">Criar token (fine-grained)</a>.</li>
-          <li>Dê um nome, por exemplo <b>Painel do sítio</b>, e escolha a validade.</li>
-          <li>Em <b>Repository access</b>, marque <b>Only select repositories</b> e escolha <b id="nomeRepo"></b>.</li>
-          <li>Em <b>Permissions → Repository permissions</b>, coloque <b>Contents</b> como <b>Read and write</b>.</li>
-          <li>Clique em <b>Generate token</b>, copie e cole aqui.</li>
+          <li>Toque em <a target="_blank" rel="noopener" href="https://github.com/settings/tokens/new?scopes=public_repo&description=Painel%20do%20sitio">Criar chave no GitHub</a> (já vem tudo marcado).</li>
+          <li>Em <b>Expiration</b>, escolha <b>No expiration</b> para não precisar refazer.</li>
+          <li>Role até o fim e toque em <b>Generate token</b>.</li>
+          <li>Copie o código que começa com <b>ghp_</b> e cole acima.</li>
         </ol>
         <p>A chave fica guardada só neste aparelho. Não compartilhe com ninguém.</p>
-      </details>
+      </div>
     </form>
 
     <form id="fSenha" hidden>

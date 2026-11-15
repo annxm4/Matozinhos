@@ -43,7 +43,7 @@
       body: body ? JSON.stringify(body) : undefined,
     });
     if (r.status === 401) throw new Error('Chave de acesso inválida ou vencida. Saia e entre com uma chave nova.');
-    if (r.status === 403) throw new Error('A chave não tem permissão de escrita (Contents: Read and write) neste repositório.');
+    if (r.status === 403) throw new Error('Esta chave não tem permissão para gravar. Recarregue a página e crie uma chave nova pelo link da tela de entrada.');
     return r;
   }
   async function carregar() {
@@ -114,7 +114,6 @@
   function telaEntrada() {
     $('#app').hidden = true; $('#entrada').hidden = false;
     $('#fToken').hidden = false; $('#fSenha').hidden = true;
-    $('#nomeRepo').textContent = CFG.repo;
   }
   function pedirSenha() {
     const novo = !D.cripto;

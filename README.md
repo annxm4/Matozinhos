@@ -13,5 +13,5 @@ Em **Settings → Pages**, escolha **Deploy from a branch**, branch `main`, past
 
 ## Entrar no painel
 
-O painel pede um token do GitHub (fine-grained, só deste repositório, permissão **Contents: Read and write**) e uma senha.
+O painel pede um token do GitHub (clássico, com o escopo `public_repo`; o link está na tela de entrada) e uma senha.
 Nome, telefone e valores das reservas são gravados criptografados com essa senha; no site aparecem apenas as datas ocupadas.
