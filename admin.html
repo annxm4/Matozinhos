@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Painel do proprietário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<!-- Entrada -->
+<main class="entrada" id="entrada" hidden>
+  <div class="cartao">
+    <h1>Painel do proprietário</h1>
+    <p class="sub">Gerencie reservas, preços, fotos e textos do site.</p>
+
+    <form id="fToken">
+      <label>Chave de acesso do GitHub (token)
+        <input type="password" id="token" autocomplete="off" required placeholder="github_pat_...">
+      </label>
+      <button class="bt bt-pri" type="submit">Continuar</button>
+      <details>
+        <summary>Como criar a chave (só na primeira vez)</summary>
+        <ol>
+          <li>Entre no GitHub e abra <a target="_blank" rel="noopener" href="https://github.com/settings/personal-access-tokens/new">Criar token (fine-grained)</a>.</li>
+          <li>Dê um nome, por exemplo <b>Painel do sítio</b>, e escolha a validade.</li>
+          <li>Em <b>Repository access</b>, marque <b>Only select repositories</b> e escolha <b id="nomeRepo"></b>.</li>
+          <li>Em <b>Permissions → Repository permissions</b>, coloque <b>Contents</b> como <b>Read and write</b>.</li>
+          <li>Clique em <b>Generate token</b>, copie e cole aqui.</li>
+        </ol>
+        <p>A chave fica guardada só neste aparelho. Não compartilhe com ninguém.</p>
+      </details>
+    </form>
+
+    <form id="fSenha" hidden>
+      <p id="senhaTxt"></p>
+      <label>Senha do painel
+        <input type="password" id="senha" required minlength="6" autocomplete="current-password">
+      </label>
+      <label id="senha2L" hidden>Repita a senha
+        <input type="password" id="senha2" minlength="6" autocomplete="new-password">
+      </label>
+      <button class="bt bt-pri" type="submit">Entrar</button>
+    </form>
+    <p class="erro" id="erroEntrada" role="alert"></p>
+  </div>
+</main>
+
+<!-- Painel -->
+<div id="app" hidden>
+  <header class="barra">
+    <strong>Painel do sítio</strong>
+    <a href="index.html" target="_blank" rel="noopener">Ver site ↗</a>
+    <button type="button" class="bt bt-liso" id="sair">Sair</button>
+  </header>
+  <nav class="abas" id="abas">
+    <button type="button" data-aba="reservas">Reservas</button>
+    <button type="button" data-aba="precos">Preços</button>
+    <button type="button" data-aba="fotos">Fotos</button>
+    <button type="button" data-aba="site">Site</button>
+  </nav>
+  <main class="painel" id="painel"></main>
+  <div class="publicar" id="publicar" hidden>
+    <span>Há alterações que ainda não estão no site.</span>
+    <button type="button" class="bt bt-pri" id="btPublicar">Publicar alterações</button>
+  </div>
+</div>
+
+<!-- Reserva -->
+<dialog id="dlgReserva">
+  <form id="fReserva" method="dialog">
+    <h2 id="rTitulo">Nova reserva</h2>
+    <div class="g2">
+      <label>Tipo
+        <select id="rStatus">
+          <option value="confirmada">Reserva confirmada</option>
+          <option value="pendente">Reserva pendente (aguardando sinal)</option>
+          <option value="bloqueio">Bloqueio (uso próprio / manutenção)</option>
+        </select>
+      </label>
+      <span></span>
+      <label>Entrada <input type="date" id="rInicio" required></label>
+      <label>Saída <input type="date" id="rFim" required></label>
+    </div>
+    <p class="dica" id="rTabela"></p>
+    <div id="rHospede">
+      <div class="g2">
+        <label>Nome do hóspede <input type="text" id="rNome" autocomplete="off"></label>
+        <label>Telefone / WhatsApp <input type="tel" id="rTel" autocomplete="off"></label>
+        <label>Valor combinado (R$) <input type="number" id="rValor" min="0" step="0.01" inputmode="decimal"></label>
+        <label>Sinal já pago (R$) <input type="number" id="rSinal" min="0" step="0.01" inputmode="decimal"></label>
+      </div>
+    </div>
+    <label>Observações <textarea id="rObs" rows="2"></textarea></label>
+    <p class="dica">Nome, telefone, valores e observações ficam criptografados com a senha do painel. No site aparecem só as datas ocupadas.</p>
+    <p class="erro" id="rErro" role="alert"></p>
+    <div class="acoes">
+      <button type="button" class="bt bt-perigo" id="rExcluir">Excluir</button>
+      <span class="esp"></span>
+      <button type="button" class="bt bt-liso" id="rCancelar">Cancelar</button>
+      <button type="submit" class="bt bt-pri" id="rSalvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Preço de uma data -->
+<dialog id="dlgData">
+  <form id="fData" method="dialog">
+    <h2 id="dTitulo"></h2>
+    <p class="dica" id="dAtual"></p>
+    <label>Preço especial desta noite (R$) <input type="number" id="dValor" min="0" step="0.01" inputmode="decimal" required></label>
+    <div class="acoes">
+      <button type="button" class="bt bt-liso" id="dLimpar">Voltar ao preço normal</button>
+      <span class="esp"></span>
+      <button type="button" class="bt bt-liso" id="dCancelar">Cancelar</button>
+      <button type="submit" class="bt bt-pri">Definir</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="aviso-flutuante" id="toast" role="status" hidden></div>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

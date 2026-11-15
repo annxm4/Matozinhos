@@ -1,0 +1,255 @@
+{
+ "versao": 1,
+ "site": {
+  "nome": "Sítio em Matozinhos",
+  "slogan": "Piscina, hidromassagem, sinuca e churrasco para reunir quem você gosta.",
+  "descricao": "Um sítio completo em Matozinhos, Minas Gerais, para alugar por diária, fim de semana, semana ou feriado. A casa tem 3 quartos, sala e cozinha, e a área de lazer reúne piscina, hidromassagem, churrasqueira, freezer e mesa de sinuca. A garagem comporta vários carros.",
+  "whatsapp": "",
+  "cidade": "Matozinhos – MG",
+  "endereco": "",
+  "capacidade": "",
+  "checkin": "",
+  "checkout": "",
+  "regras": [],
+  "comodidades": [
+   {
+    "icone": "🏊",
+    "nome": "Piscina",
+    "detalhe": ""
+   },
+   {
+    "icone": "🛁",
+    "nome": "Hidromassagem",
+    "detalhe": ""
+   },
+   {
+    "icone": "🎱",
+    "nome": "Sinuca",
+    "detalhe": ""
+   },
+   {
+    "icone": "🔥",
+    "nome": "Churrasqueira",
+    "detalhe": ""
+   },
+   {
+    "icone": "❄️",
+    "nome": "Freezer",
+    "detalhe": ""
+   },
+   {
+    "icone": "🛏️",
+    "nome": "3 quartos",
+    "detalhe": ""
+   },
+   {
+    "icone": "🛋️",
+    "nome": "Sala",
+    "detalhe": ""
+   },
+   {
+    "icone": "🍳",
+    "nome": "Cozinha",
+    "detalhe": ""
+   },
+   {
+    "icone": "📺",
+    "nome": "Televisão",
+    "detalhe": ""
+   },
+   {
+    "icone": "🪑",
+    "nome": "Mesas e cadeiras",
+    "detalhe": ""
+   },
+   {
+    "icone": "🚗",
+    "nome": "Garagem",
+    "detalhe": "Para vários carros"
+   }
+  ]
+ },
+ "precos": {
+  "diasSemana": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "feriado": 0,
+  "semanal": 0,
+  "limpeza": 0,
+  "caucao": 0,
+  "minNoites": 1,
+  "periodos": [],
+  "datas": {}
+ },
+ "feriados": [
+  {
+   "data": "2026-01-01",
+   "nome": "Ano Novo",
+   "preco": null
+  },
+  {
+   "data": "2026-02-16",
+   "nome": "Carnaval (segunda)",
+   "preco": null
+  },
+  {
+   "data": "2026-02-17",
+   "nome": "Carnaval (terça)",
+   "preco": null
+  },
+  {
+   "data": "2026-04-03",
+   "nome": "Sexta-feira Santa",
+   "preco": null
+  },
+  {
+   "data": "2026-04-05",
+   "nome": "Páscoa",
+   "preco": null
+  },
+  {
+   "data": "2026-04-21",
+   "nome": "Tiradentes",
+   "preco": null
+  },
+  {
+   "data": "2026-05-01",
+   "nome": "Dia do Trabalho",
+   "preco": null
+  },
+  {
+   "data": "2026-06-04",
+   "nome": "Corpus Christi",
+   "preco": null
+  },
+  {
+   "data": "2026-09-07",
+   "nome": "Independência",
+   "preco": null
+  },
+  {
+   "data": "2026-10-12",
+   "nome": "Nossa Senhora Aparecida",
+   "preco": null
+  },
+  {
+   "data": "2026-11-02",
+   "nome": "Finados",
+   "preco": null
+  },
+  {
+   "data": "2026-11-15",
+   "nome": "Proclamação da República",
+   "preco": null
+  },
+  {
+   "data": "2026-11-20",
+   "nome": "Consciência Negra",
+   "preco": null
+  },
+  {
+   "data": "2026-12-24",
+   "nome": "Véspera de Natal",
+   "preco": null
+  },
+  {
+   "data": "2026-12-25",
+   "nome": "Natal",
+   "preco": null
+  },
+  {
+   "data": "2026-12-31",
+   "nome": "Réveillon",
+   "preco": null
+  },
+  {
+   "data": "2027-01-01",
+   "nome": "Ano Novo",
+   "preco": null
+  },
+  {
+   "data": "2027-02-08",
+   "nome": "Carnaval (segunda)",
+   "preco": null
+  },
+  {
+   "data": "2027-02-09",
+   "nome": "Carnaval (terça)",
+   "preco": null
+  },
+  {
+   "data": "2027-03-26",
+   "nome": "Sexta-feira Santa",
+   "preco": null
+  },
+  {
+   "data": "2027-03-28",
+   "nome": "Páscoa",
+   "preco": null
+  },
+  {
+   "data": "2027-04-21",
+   "nome": "Tiradentes",
+   "preco": null
+  },
+  {
+   "data": "2027-05-01",
+   "nome": "Dia do Trabalho",
+   "preco": null
+  },
+  {
+   "data": "2027-05-27",
+   "nome": "Corpus Christi",
+   "preco": null
+  },
+  {
+   "data": "2027-09-07",
+   "nome": "Independência",
+   "preco": null
+  },
+  {
+   "data": "2027-10-12",
+   "nome": "Nossa Senhora Aparecida",
+   "preco": null
+  },
+  {
+   "data": "2027-11-02",
+   "nome": "Finados",
+   "preco": null
+  },
+  {
+   "data": "2027-11-15",
+   "nome": "Proclamação da República",
+   "preco": null
+  },
+  {
+   "data": "2027-11-20",
+   "nome": "Consciência Negra",
+   "preco": null
+  },
+  {
+   "data": "2027-12-24",
+   "nome": "Véspera de Natal",
+   "preco": null
+  },
+  {
+   "data": "2027-12-25",
+   "nome": "Natal",
+   "preco": null
+  },
+  {
+   "data": "2027-12-31",
+   "nome": "Réveillon",
+   "preco": null
+  }
+ ],
+ "fotos": [],
+ "reservas": [],
+ "cripto": null
+}

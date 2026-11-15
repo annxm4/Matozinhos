@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sítio em Matozinhos – aluguel por diária, fim de semana e feriados</title>
+<meta name="description" content="Sítio para alugar em Matozinhos, MG: piscina, hidromassagem, sinuca, churrasqueira, 3 quartos e garagem para vários carros. Veja datas e valores.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<header class="topo" id="topo">
+  <a class="marca" href="#inicio"><span class="marca-folha" aria-hidden="true"></span><span data-t="nome">Sítio em Matozinhos</span></a>
+  <nav aria-label="Seções">
+    <a href="#sobre">O sítio</a>
+    <a href="#comodidades">Comodidades</a>
+    <a href="#fotos">Fotos</a>
+    <a href="#local">Localização</a>
+  </nav>
+  <a class="btn btn-claro" href="#reservas">Ver datas</a>
+</header>
+
+<section class="hero" id="inicio">
+  <div class="hero-fundo" id="heroFundo" aria-hidden="true">
+    <svg viewBox="0 0 1440 700" preserveAspectRatio="xMidYMax slice">
+      <circle cx="1090" cy="210" r="92" fill="#f2c26b" opacity=".9"/>
+      <path d="M0 430 Q240 300 520 400 T1000 360 T1440 420 V700 H0Z" fill="#2f5a3d"/>
+      <path d="M0 520 Q300 400 640 500 T1440 470 V700 H0Z" fill="#264a33"/>
+      <path d="M0 610 Q380 520 760 600 T1440 570 V700 H0Z" fill="#1c3826"/>
+    </svg>
+  </div>
+  <div class="hero-texto">
+    <p class="sobrelinha" data-t="cidade">Matozinhos – MG</p>
+    <h1 data-t="nome">Sítio em Matozinhos</h1>
+    <p class="hero-slogan" data-t="slogan"></p>
+    <div class="hero-acoes">
+      <a class="btn btn-destaque" href="#reservas">Consultar datas e valores</a>
+      <a class="btn btn-contorno" href="#comodidades">O que tem no sítio</a>
+    </div>
+  </div>
+</section>
+
+<main>
+  <section class="secao" id="sobre">
+    <div class="duas">
+      <div>
+        <p class="sobrelinha">O sítio</p>
+        <h2>Espaço completo para descansar e festejar</h2>
+        <p class="texto" data-t="descricao"></p>
+      </div>
+      <ul class="fatos" id="fatos"></ul>
+    </div>
+  </section>
+
+  <section class="secao secao-creme" id="comodidades">
+    <p class="sobrelinha">Comodidades</p>
+    <h2>Tudo o que você encontra aqui</h2>
+    <ul class="comodidades" id="listaComodidades"></ul>
+  </section>
+
+  <section class="secao" id="fotos">
+    <p class="sobrelinha">Fotos</p>
+    <h2>Conheça o espaço</h2>
+    <div class="galeria" id="galeria"></div>
+  </section>
+
+  <section class="secao secao-verde" id="reservas">
+    <p class="sobrelinha">Reservas</p>
+    <h2>Datas disponíveis e valores</h2>
+    <p class="texto-claro">Toque no dia de entrada e depois no dia de saída para ver o valor da estadia.</p>
+    <div class="reserva">
+      <div class="agenda">
+        <div class="agenda-nav">
+          <button type="button" id="mesAnt" aria-label="Mês anterior">‹</button>
+          <button type="button" id="mesProx" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="meses" id="meses"></div>
+        <ul class="legenda">
+          <li><i class="lg lg-livre"></i>Disponível</li>
+          <li><i class="lg lg-ocupado"></i>Ocupado</li>
+          <li><i class="lg lg-especial"></i>Feriado ou data especial</li>
+          <li><i class="lg lg-sel"></i>Sua seleção</li>
+        </ul>
+      </div>
+      <aside class="resumo" id="resumo" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section class="secao" id="regras" hidden>
+    <p class="sobrelinha">Informações</p>
+    <h2>Bom saber antes de reservar</h2>
+    <ul class="regras" id="listaRegras"></ul>
+  </section>
+
+  <section class="secao secao-creme" id="local">
+    <div class="duas">
+      <div>
+        <p class="sobrelinha">Localização</p>
+        <h2 data-t="cidade">Matozinhos – MG</h2>
+        <p class="texto" id="enderecoTxt"></p>
+        <a class="btn btn-destaque" id="btnZapLocal" href="#reservas">Falar com o proprietário</a>
+      </div>
+      <iframe class="mapa" id="mapa" title="Mapa da região" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    </div>
+  </section>
+</main>
+
+<footer class="rodape">
+  <span data-t="nome">Sítio em Matozinhos</span>
+  <span data-t="cidade">Matozinhos – MG</span>
+  <a href="admin.html">Área do proprietário</a>
+</footer>
+
+<dialog class="visor" id="visor">
+  <button type="button" class="visor-x" id="visorX" aria-label="Fechar">×</button>
+  <button type="button" class="visor-nav visor-ant" id="visorAnt" aria-label="Foto anterior">‹</button>
+  <figure><img id="visorImg" alt=""><figcaption id="visorLeg"></figcaption></figure>
+  <button type="button" class="visor-nav visor-prox" id="visorProx" aria-label="Próxima foto">›</button>
+</dialog>
+
+<script src="js/core.js"></script>
+<script src="js/site.js"></script>
+</body>
+</html>
