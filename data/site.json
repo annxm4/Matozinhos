@@ -251,5 +251,8 @@
  ],
  "fotos": [],
  "reservas": [],
- "cripto": null
+ "cripto": {
+  "salt": "mqeOgIOggDtJSOztK5rOxQ==",
+  "check": "CK8MsSQJVPBT81sFGszkFEuHY7lvpNX+666r6I6f6xcybCii"
+ }
 }
