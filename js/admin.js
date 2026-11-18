@@ -5,6 +5,7 @@
 
   let token = null, chave = null, D = null, versao = 0, sujo = false, aba = 'reservas';
   let cal = null, editando = null, dataSel = null;
+  let ONLINE = []; // reservas feitas pelo site (tabela própria no banco)
 
   /* ---------- Utilidades ---------- */
   function b64DeBytes(u) {
@@ -46,7 +47,20 @@
     const j = await api('dados?admin=1');
     D = j.dados ? C.normalizar(j.dados) : C.padrao();
     versao = j.versao;
+    await carregarOnline();
   }
+  async function carregarOnline() {
+    try { ONLINE = await api('reservas'); } catch (e) { ONLINE = []; toast(e.message, true); }
+  }
+  // Reservas do painel + reservas online que seguram datas, no formato usado pelo calendário.
+  const ST_ON = { confirmada: 'confirmada', aguardando: 'pendente', conflito: 'pendente' };
+  function todas() {
+    return D.reservas.concat(ONLINE.filter((r) => ST_ON[r.status]).map((r) => ({
+      id: 'on-' + r.id, inicio: r.inicio, fim: r.fim, status: ST_ON[r.status], online: r,
+      _d: { nome: r.nome, telefone: r.telefone, valor: r.total, sinal: r.valor_pago },
+    })));
+  }
+  const ocupacaoGeral = (ignorar) => C.ocupacao({ reservas: todas() }, ignorar);
   async function salvar() {
     const out = JSON.parse(JSON.stringify(D, (k, v) => (k === '_d' ? undefined : v)));
     for (let i = 0; i < D.reservas.length; i++) out.reservas[i].priv = await cifrar(D.reservas[i]._d || {});
@@ -157,7 +171,7 @@
   })();
 
   /* ---------- Navegação ---------- */
-  $('#abas').onclick = (e) => { const b = e.target.closest('[data-aba]'); if (b) { aba = b.dataset.aba; desenhar(); } };
+  $('#abas').onclick = (e) => { const b = e.target.closest('[data-aba]'); if (b) { aba = b.dataset.aba; desenhar(); if (aba === 'reservas') carregarOnline().then(() => { if (aba === 'reservas' && !document.querySelector('dialog[open]')) desenhar(); }); } };
   $('#btPublicar').onclick = () => publicar();
   function desenhar() {
     document.querySelectorAll('#abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
@@ -172,6 +186,7 @@
     let v = el.value;
     if (el.dataset.tipo === 'num') v = v === '' ? (el.dataset.vazio === 'null' ? null : 0) : Number(v);
     if (el.dataset.tipo === 'linhas') v = v.split('\n').map((x) => x.trim()).filter(Boolean);
+    if (el.dataset.tipo === 'bool') v = el.checked;
     definir(D, k, v); marcar();
     if (/^site\.(mapa|endereco|cidade)$/.test(k)) { clearTimeout(previaMapa.t); previaMapa.t = setTimeout(previaMapa, 700); }
   });
@@ -199,7 +214,7 @@
 
   /* ---------- Calendário do painel ---------- */
   function calendario() {
-    const ocup = C.ocupacao(D), hoje = C.hoje();
+    const ocup = ocupacaoGeral(), hoje = C.hoje();
     const cel = C.gradeMes(cal.y, cal.m).map((d) => {
       if (!d) return '<span></span>';
       const r = ocup.get(d), p = C.precoNoite(D, d);
@@ -239,12 +254,18 @@
       $('#calAdmin').outerHTML = calendario();
     },
     dia(d) {
-      if (aba === 'reservas') { const r = C.ocupacao(D).get(d.d); r ? abrirReserva(r) : abrirReserva(null, d.d); }
+      if (aba === 'reservas') {
+        const r = ocupacaoGeral().get(d.d);
+        if (r && r.online) return destacarOnline(r.online.id);
+        r ? abrirReserva(r) : abrirReserva(null, d.d);
+      }
       else abrirData(d.d);
     },
     nova() { abrirReserva(null); },
     bloquear() { abrirReserva(null, null, 'bloqueio'); },
     editar(d) { abrirReserva(D.reservas.find((r) => r.id === d.id)); },
+    onConfirmar(d) { acaoOnline(d.id, 'confirmar', 'Confirmar esta reserva como paga? Use quando o pagamento foi recebido por fora ou o conflito foi resolvido.'); },
+    onCancelar(d) { acaoOnline(d.id, 'cancelar', 'Cancelar esta reserva? As datas voltam a ficar livres. O estorno, se houver, é feito no app da InfinitePay.'); },
 
     addFeriado() { D.feriados.push({ data: C.hoje(), nome: '', preco: null }); marcar(); desenhar(); },
     delFeriado(d) { D.feriados.splice(+d.i, 1); marcar(); desenhar(); },
@@ -298,10 +319,55 @@
         <button type="button" class="bt bt-liso" data-a="bloquear">Bloquear datas</button></div>
       <p class="dica">Toque em um dia livre para criar uma reserva, ou em um dia ocupado para editar.</p>
       ${calendario()}
+      ${vOnline()}
       <h2>Próximas (${prox.length})</h2>
       ${prox.length ? `<ul class="lista">${prox.map(cartaoReserva).join('')}</ul>` : '<p class="vazio">Nenhuma reserva futura.</p>'}
       ${pass.length ? `<details><summary>Reservas passadas (${pass.length})</summary><ul class="lista">${pass.map(cartaoReserva).join('')}</ul></details>` : ''}`;
   }
+  /* ---------- Reservas online ---------- */
+  const ROT_ON = { aguardando: 'Aguardando pagamento', confirmada: 'Paga', conflito: 'Conflito de datas', cancelada: 'Cancelada', expirada: 'Não pagou' };
+  const MODO_ON = { sinal: 'sinal', caucao: 'caução', integral: 'valor total' };
+  function cartaoOnline(r) {
+    const n = C.noites(r.inicio, r.fim), tel = (r.telefone || '').replace(/\D/g, '');
+    const falta = r.modo === 'caucao' ? r.total : Math.max(0, r.total - r.valor_pago);
+    const pg = r.pagamento ? ` · ${r.pagamento.capture_method === 'pix' ? 'Pix' : 'cartão'}${r.pagamento.installments > 1 ? ' ' + r.pagamento.installments + 'x' : ''}` : '';
+    const ativa = ['aguardando', 'confirmada', 'conflito'].includes(r.status);
+    return `<li class="res on-${r.status}" id="on-${r.id}">
+      <div><strong>${esc(r.nome)}</strong> <span class="selo">${ROT_ON[r.status] || r.status}</span> <span class="selo">${esc(r.codigo)}</span>
+        <p>${C.dataLonga(r.inicio)} → ${C.dataLonga(r.fim)} · ${n} noite${n > 1 ? 's' : ''}${r.hospedes ? ` · ${r.hospedes} pessoas` : ''}</p>
+        <p>Total ${C.moeda(r.total)} · ${MODO_ON[r.modo]} ${C.moeda(r.valor_cobrado)} · pago ${C.moeda(r.valor_pago)}${pg}${falta > 0 && r.status !== 'cancelada' ? ` · falta ${C.moeda(falta)}` : ''}</p>
+        ${r.email ? `<p>${esc(r.email)}</p>` : ''}
+        ${r.obs ? `<p class="obs">${esc(r.obs)}</p>` : ''}
+        ${r.status === 'conflito' ? '<p class="erro">Pagou depois do prazo e as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}</div>
+      <div class="res-acoes">
+        ${tel ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}">WhatsApp</a>` : ''}
+        ${['aguardando', 'conflito', 'expirada'].includes(r.status) ? `<button type="button" class="bt bt-liso" data-a="onConfirmar" data-id="${r.id}">Confirmar</button>` : ''}
+        ${ativa ? `<button type="button" class="bt bt-perigo" data-a="onCancelar" data-id="${r.id}">Cancelar</button>` : ''}</div></li>`;
+  }
+  function vOnline() {
+    if (!ONLINE.length) return D.precos.online.ativo ? '<h2>Reservas online</h2><p class="vazio">Nenhuma reserva feita pelo site ainda.</p>' : '';
+    const hoje = C.hoje();
+    const vivas = ONLINE.filter((r) => r.fim >= hoje && ['aguardando', 'confirmada', 'conflito'].includes(r.status));
+    const resto = ONLINE.filter((r) => !vivas.includes(r)).reverse();
+    return `<h2>Reservas online (${vivas.length})</h2>
+      ${vivas.length ? `<ul class="lista">${vivas.map(cartaoOnline).join('')}</ul>` : '<p class="vazio">Nenhuma reserva online ativa.</p>'}
+      ${resto.length ? `<details><summary>Canceladas, não pagas e passadas (${resto.length})</summary><ul class="lista">${resto.map(cartaoOnline).join('')}</ul></details>` : ''}`;
+  }
+  function destacarOnline(id) {
+    const el = document.getElementById('on-' + id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('pisca'); setTimeout(() => el.classList.remove('pisca'), 1600);
+  }
+  async function acaoOnline(id, acao, pergunta) {
+    if (!confirm(pergunta)) return;
+    try {
+      await api('reservas', { method: 'PATCH', body: { id, acao } });
+      await carregarOnline(); desenhar();
+      toast(acao === 'confirmar' ? 'Reserva confirmada.' : 'Reserva cancelada.');
+    } catch (e) { toast(e.message, true); }
+  }
+
   function abrirReserva(r, inicio, status) {
     editando = r || null;
     const d = (r && r._d) || {};
@@ -334,7 +400,7 @@
     e.preventDefault();
     const a = $('#rInicio').value, b = $('#rFim').value, st = $('#rStatus').value;
     if (!(a < b)) { $('#rErro').textContent = 'A saída precisa ser depois da entrada.'; return; }
-    const ocup = C.ocupacao(D, editando && editando.id);
+    const ocup = ocupacaoGeral(editando && editando.id);
     for (let x = a; x < b; x = C.addDias(x, 1)) {
       if (ocup.has(x)) { $('#rErro').textContent = `O dia ${C.brData(x)} já está ocupado por outra reserva.`; return; }
     }
@@ -391,6 +457,23 @@
         <label>Mínimo de noites<input type="number" min="1" step="1" data-tipo="num" data-k="precos.minNoites" value="${P.minNoites}"></label>
       </div>
       <p class="dica">O pacote semanal vale a cada 7 noites seguidas quando sai mais barato que as diárias, e não se aplica a estadias que pegam um período especial. Use 0 para desligar.</p>
+    </section>
+
+    <section class="bloco"><h2>Reserva online (InfinitePay)</h2>
+      <label class="chk"><input type="checkbox" data-tipo="bool" data-k="precos.online.ativo" ${P.online.ativo ? 'checked' : ''}> O cliente pode reservar e pagar pelo site</label>
+      <div class="g4">
+        <label>InfiniteTag (sem o $)<input type="text" data-k="precos.online.handle" value="${esc(P.online.handle)}" placeholder="ex.: sitiomatozinhos" autocomplete="off"></label>
+        <label>Pagamento antecipado
+          <select data-k="precos.online.entrada">
+            ${[['sinal', 'Sinal (% do total)'], ['caucao', 'Caução (valor acima)'], ['nenhuma', 'Nenhum']].map(([v, t]) => `<option value="${v}" ${P.online.entrada === v ? 'selected' : ''}>${t}</option>`).join('')}
+          </select></label>
+        <label>Sinal (%)<input type="number" min="1" max="99" step="1" data-tipo="num" data-k="precos.online.sinalPct" value="${P.online.sinalPct}"></label>
+        <label>Segurar datas por (min)<input type="number" min="10" max="1440" step="5" data-tipo="num" data-k="precos.online.minutos" value="${P.online.minutos}"></label>
+      </div>
+      <label class="chk"><input type="checkbox" data-tipo="bool" data-k="precos.online.integral" ${P.online.integral ? 'checked' : ''}> Permitir pagar o valor total online (Pix ou cartão em até 12x)</label>
+      <label>Política de cancelamento (aparece antes de pagar)
+        <textarea rows="3" data-k="precos.online.politica" placeholder="Ex.: Cancelamento com reembolso total até 15 dias antes da entrada. Depois disso, o sinal não é devolvido.">${esc(P.online.politica)}</textarea></label>
+      <p class="dica">O cliente escolhe as datas, preenche os dados e paga no checkout da InfinitePay. As datas ficam seguras pelo tempo acima; se ele não pagar, voltam a ficar livres. Pagamentos confirmados aparecem na aba Reservas. Estornos são feitos no app da InfinitePay.</p>
     </section>
 
     <section class="bloco"><h2>Feriados</h2>

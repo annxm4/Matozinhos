@@ -2,6 +2,7 @@
 // GET  /api/dados?admin=1  -> dados completos + versão (exige sessão)
 // PUT  /api/dados          -> grava { dados, versao } com controle de concorrência (exige sessão)
 import { rota, enviar, lerCorpo, consulta, autenticado, preparar, sql } from '../lib/servidor.js';
+import { reservasAtivas } from '../lib/reservas.js';
 
 const ID = 'site';
 
@@ -17,6 +18,8 @@ export default rota(async (req, res) => {
     const d = linha ? linha.dados : {};
     delete d.cripto;
     d.reservas = (d.reservas || []).map(({ id, inicio, fim, status }) => ({ id, inicio, fim, status }));
+    (await reservasAtivas()).forEach((r) => d.reservas.push({ id: r.id, inicio: r.inicio, fim: r.fim, status: 'confirmada' }));
+    if (d.precos && d.precos.online) delete d.precos.online.handle;
     return enviar(res, 200, d, { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' });
   }
 

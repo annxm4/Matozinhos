@@ -130,3 +130,12 @@ details.dica summary { cursor: pointer; color: var(--terra); font-weight: 600; }
 details.dica ol { margin: 8px 0 0; padding-left: 20px; }
 .dica.alerta { color: var(--perigo); }
 .mapa-prev { width: 100%; height: 260px; border: 0; border-radius: 14px; background: var(--linha); margin-bottom: 12px; }
+
+/* Reservas online */
+.chk { flex-direction: row; align-items: center; gap: 10px; font-size: .95rem; color: var(--tinta); }
+.chk input { width: 20px; height: 20px; }
+.res.on-aguardando { border-left-color: var(--ouro); }
+.res.on-conflito { border-left-color: var(--perigo); }
+.res.on-cancelada, .res.on-expirada { opacity: .65; border-left-color: #9a9a8f; }
+.res .erro { color: var(--perigo); font-weight: 500; }
+.res.pisca { box-shadow: 0 0 0 3px var(--ouro); transition: box-shadow .3s; }

@@ -187,13 +187,59 @@
       ${o.consulta ? '<p class="dica">Valor sob consulta para estas datas.</p>'
         : `<ul class="linhas">${linhas}</ul><p class="total"><span>Total</span><strong>${C.moeda(o.total)}</strong></p>`}
       ${P.caucao > 0 ? `<p class="dica">Caução de ${C.moeda(P.caucao)}, devolvida na saída.</p>` : ''}
+      ${podeOnline(o, curto) ? '<button type="button" class="btn btn-destaque btn-cheio" id="btReservar">Reservar e pagar online</button>' : ''}
       ${curto ? '' : (zap()
         ? `<a class="btn btn-zap" target="_blank" rel="noopener" href="${esc(linkZap(msg))}">Pedir reserva pelo WhatsApp</a>
            <p class="dica">A reserva só vale depois da confirmação do proprietário.</p>`
         : '<p class="dica">O contato para reservas será divulgado em breve.</p>')}
       <button type="button" class="link" id="limpar">Limpar seleção</button>`;
     $('#limpar').onclick = limpar;
+    if ($('#btReservar')) $('#btReservar').onclick = () => abrirReservar(o);
   }
+
+  /* ---------- Reserva online ---------- */
+  const podeOnline = (o, curto) => D.precos.online && D.precos.online.ativo && !o.consulta && !curto && C.modosOnline(D, o).length > 0;
+  function abrirReservar(o) {
+    const dlg = $('#dlgReservar');
+    $('#rvDatas').textContent = `${C.dataLonga(ci)} → ${C.dataLonga(co)} · ${o.n} noite${o.n > 1 ? 's' : ''} · ${C.moeda(o.total)}`;
+    const modos = C.modosOnline(D, o);
+    $('#rvModos').innerHTML = '<legend>Como prefere pagar?</legend>' + modos.map((m, i) => `
+      <label class="modo"><input type="radio" name="rvModo" value="${m.modo}" ${i === 0 ? 'checked' : ''}>
+        <span><strong>${esc(m.rotulo)} · ${C.moeda(m.valor)}</strong><small>${esc(m.detalhe)}</small></span></label>`).join('');
+    const pol = [D.precos.online.politica, ...(D.site.regras || [])].filter(Boolean);
+    $('#rvPolitica').hidden = !pol.length;
+    $('#rvPolitica').innerHTML = pol.length ? '<strong>Antes de pagar</strong><ul>' + pol.map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
+    $('#rvErro').textContent = '';
+    try { const s = JSON.parse(localStorage.getItem('sitio_cliente')) || {}; ['Nome', 'Tel', 'Email'].forEach((k) => { if (s[k] && !$('#rv' + k).value) $('#rv' + k).value = s[k]; }); } catch (e) { /* sem dados salvos */ }
+    dlg.showModal();
+  }
+  $('#rvFechar').onclick = () => $('#dlgReservar').close();
+  $('#fReservar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const bt = $('#rvPagar'), modo = (document.querySelector('input[name=rvModo]:checked') || {}).value;
+    bt.disabled = true; bt.textContent = 'Reservando…'; $('#rvErro').textContent = '';
+    const corpo = { inicio: ci, fim: co, modo, nome: $('#rvNome').value, telefone: $('#rvTel').value,
+      email: $('#rvEmail').value, hospedes: $('#rvHosp').value, obs: $('#rvObs').value };
+    try {
+      const r = await fetch('api/reservar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Não foi possível reservar agora. Tente de novo.');
+      try {
+        localStorage.setItem('sitio_cliente', JSON.stringify({ Nome: corpo.nome, Tel: corpo.telefone, Email: corpo.email }));
+        localStorage.setItem('sitio_reserva', JSON.stringify({ codigo: j.codigo, telefone: corpo.telefone }));
+      } catch (x) { /* navegador sem armazenamento */ }
+      bt.textContent = 'Abrindo o pagamento…';
+      location.href = j.url;
+    } catch (err) {
+      $('#rvErro').textContent = err.message;
+      bt.disabled = false; bt.textContent = 'Ir para o pagamento';
+      if (/reservadas/.test(err.message)) recarregarOcupacao();
+    }
+  });
+  function recarregarOcupacao() {
+    fetch('api/dados', { cache: 'no-store' }).then((r) => r.json()).then((d) => { D = C.normalizar(d); ocup = C.ocupacao(D); agenda(); }).catch(() => {});
+  }
+
   function extras() {
     const P = D.precos, x = [];
     if (P.semanal > 0) x.push(`Pacote de 7 noites: ${C.moeda(P.semanal)}`);

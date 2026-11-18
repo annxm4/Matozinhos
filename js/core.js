@@ -106,6 +106,15 @@
         minNoites: 1,
         periodos: [], // { id, nome, inicio, fim, preco, minNoites }
         datas: {},    // { 'AAAA-MM-DD': preço }
+        online: {
+          ativo: false,
+          handle: '',        // InfiniteTag (sem o $)
+          entrada: 'sinal',  // 'sinal' (% do total) | 'caucao' (valor da caução) | 'nenhuma'
+          sinalPct: 30,
+          integral: true,    // permite pagar o total online (cartão em até 12x ou Pix)
+          minutos: 30,       // tempo que as datas ficam seguras aguardando o pagamento
+          politica: '',
+        },
       },
       feriados: [...C.feriadosDoAno(ano), ...C.feriadosDoAno(ano + 1)],
       fotos: [],     // { arquivo, legenda }
@@ -135,6 +144,7 @@
     const out = { ...p, ...d };
     out.site = { ...p.site, ...(d.site || {}) };
     out.precos = { ...p.precos, ...(d.precos || {}) };
+    out.precos.online = { ...p.precos.online, ...((d.precos && d.precos.online) || {}) };
     ['feriados', 'fotos', 'reservas'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = p[k]; });
     return out;
   };
@@ -190,6 +200,27 @@
       total: subtotal + limpeza,
     };
   };
+
+  // Formas de pagamento online disponíveis para um orçamento.
+  C.modosOnline = (D, o) => {
+    const ON = D.precos.online, P = D.precos, m = [];
+    const r2 = (v) => Math.round(v * 100) / 100;
+    if (ON.entrada === 'sinal' && ON.sinalPct > 0 && ON.sinalPct < 100) {
+      const v = r2(o.total * ON.sinalPct / 100);
+      m.push({ modo: 'sinal', valor: v, restante: r2(o.total - v), rotulo: `Sinal de ${ON.sinalPct}%`,
+        detalhe: `Pague ${C.moeda(v)} agora e ${C.moeda(r2(o.total - v))} até a entrada.` });
+    }
+    if (ON.entrada === 'caucao' && P.caucao > 0) {
+      m.push({ modo: 'caucao', valor: P.caucao, restante: o.total, rotulo: 'Caução',
+        detalhe: `Pague a caução de ${C.moeda(P.caucao)} agora (devolvida na saída) e a estadia de ${C.moeda(o.total)} até a entrada.` });
+    }
+    if (ON.integral) {
+      m.push({ modo: 'integral', valor: o.total, restante: 0, rotulo: 'Valor total',
+        detalhe: `Pague ${C.moeda(o.total)} agora, no Pix ou no cartão em até 12x.` });
+    }
+    return m.filter((x) => x.valor >= 1);
+  };
+  C.cobrancaOnline = (D, o, modo) => C.modosOnline(D, o).find((x) => x.modo === modo) || null;
 
   g.Sitio = C;
 })(typeof window !== 'undefined' ? window : globalThis);
