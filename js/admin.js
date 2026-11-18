@@ -276,7 +276,7 @@
     trocarChave() { desenharChave({ configurada: false, trocando: true }); },
     cancelarChave() { carregarChave(); },
     async removerChave() {
-      if (!confirm('Remover a chave de API? Os links de pagamento voltam a não ter prazo.')) return;
+      if (!confirm('Remover a chave de API? Sem ela a reserva online fica desligada até você salvar uma nova chave.')) return;
       try { desenharChave(await api('pagamento', { method: 'DELETE' })); toast('Chave removida.'); } catch (e) { toast(e.message, true); }
     },
     onConfirmar(d) { acaoOnline(d.id, 'confirmar', 'Confirmar esta reserva como paga? Use quando o pagamento foi recebido por fora ou o conflito foi resolvido.'); },
@@ -353,11 +353,11 @@
         ${st.origem === 'painel' ? '<button type="button" class="bt bt-perigo" data-a="removerChave">Remover</button>' : ''}</div>`;
       return;
     }
-    el.innerHTML = `<label>Chave de API da InfinitePay (opcional)
+    el.innerHTML = `<label>Chave de API da InfinitePay (obrigatória para a reserva online)
         <input type="password" id="chaveInput" autocomplete="off" placeholder="inchk_..."></label>
       <div class="acoes"><button type="button" class="bt bt-pri" id="btChave" data-a="salvarChave">Testar e salvar</button>
       ${st.trocando ? '<button type="button" class="bt bt-liso" data-a="cancelarChave">Cancelar</button>' : ''}</div>
-      <p class="dica">${st.trocando ? '' : 'Sem chave, o link de pagamento não vence (quem pagar atrasado vira conflito) e os juros seguem a configuração da conta. '}A chave é gerada no app da InfinitePay, testada com a InfiniteTag acima e guardada só no servidor; ela não aparece mais depois de salva.</p>`;
+      <p class="dica">${st.trocando ? '' : 'Sem chave a reserva online fica desligada: é a chave que faz o link de pagamento vencer junto com o prazo configurado. '}A chave é gerada no app da InfinitePay, testada com a InfiniteTag acima e guardada só no servidor; ela não aparece mais depois de salva.</p>`;
   }
 
   /* ---------- Reservas online ---------- */
@@ -374,7 +374,7 @@
         <p>Total ${C.moeda(r.total)} · ${MODO_ON[r.modo]} ${C.moeda(r.valor_cobrado)} · pago ${C.moeda(r.valor_pago)}${pg}${falta > 0 && r.status !== 'cancelada' ? ` · falta ${C.moeda(falta)}` : ''}</p>
         ${r.email ? `<p>${esc(r.email)}</p>` : ''}
         ${r.obs ? `<p class="obs">${esc(r.obs)}</p>` : ''}
-        ${r.status === 'conflito' ? '<p class="erro">Pagou depois do prazo e as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}</div>
+        ${r.status === 'conflito' ? '<p class="erro">O pagamento chegou depois do prazo ou as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}</div>
       <div class="res-acoes">
         ${tel ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}">WhatsApp</a>` : ''}
         ${['aguardando', 'conflito', 'expirada'].includes(r.status) ? `<button type="button" class="bt bt-liso" data-a="onConfirmar" data-id="${r.id}">Confirmar</button>` : ''}

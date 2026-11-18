@@ -2,7 +2,7 @@
 // Recalcula o preço no servidor, segura as datas e devolve o link de pagamento da InfinitePay.
 import { randomBytes } from 'node:crypto';
 import { rota, enviar, lerCorpo, preparar, sql } from '../lib/servidor.js';
-import { C, ATIVA, carregarSite, hojeBR, digitos, novoCodigo, criarLink, origemDe } from '../lib/reservas.js';
+import { C, ATIVA, carregarSite, hojeBR, digitos, novoCodigo, criarLink, origemDe, chaveInfinitePay, erroSemChave } from '../lib/reservas.js';
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -13,6 +13,8 @@ export default rota(async (req, res) => {
   const D = await carregarSite();
   const ON = D.precos.online;
   if (!ON.ativo || !ON.handle) return enviar(res, 400, { erro: 'A reserva online não está disponível. Fale com o proprietário pelo WhatsApp.' });
+  // Sem chave de API o link não teria prazo: não segura datas nem cria cobrança.
+  if (!(await chaveInfinitePay())) return enviar(res, 503, { erro: erroSemChave().message });
 
   const nome = String(b.nome || '').trim().slice(0, 120);
   const telefone = digitos(b.telefone);
@@ -63,6 +65,7 @@ export default rota(async (req, res) => {
     });
   } catch (e) {
     await q`DELETE FROM reservas_online WHERE id = ${id}`;
+    if (e.publico) return enviar(res, e.status || 503, { erro: e.message });
     throw e;
   }
   await q`UPDATE reservas_online SET checkout_url = ${url} WHERE id = ${id}`;

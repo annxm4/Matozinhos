@@ -2,12 +2,13 @@
 (function () {
   const C = window.Sitio, esc = C.esc;
   const $ = (s) => document.querySelector(s);
-  const qs = new URLSearchParams(location.search);
+  // A InfinitePay pode anexar os parâmetros com um segundo "?" (reserva.html?c=X?slug=...): trata "?" como "&".
+  const qs = new URLSearchParams(location.search.replace(/\?/g, '&'));
   const retorno = { slug: qs.get('slug'), transaction_nsu: qs.get('transaction_nsu') };
 
   let salvo = {};
   try { salvo = JSON.parse(localStorage.getItem('sitio_reserva')) || {}; } catch (e) { /* sem dados */ }
-  const codigo = (qs.get('c') || salvo.codigo || '').toUpperCase();
+  const codigo = ((qs.get('c') || salvo.codigo || '').toUpperCase().match(/^[A-Z0-9]+/) || [''])[0];
   $('#mrCodigo').value = codigo;
   if (salvo.codigo === codigo && salvo.telefone) $('#mrTel').value = salvo.telefone;
 

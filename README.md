@@ -26,7 +26,7 @@ A InfinitePay não tem ambiente de testes: teste com uma reserva real de R$ 1,00
 | `DATABASE_URL` | String de conexão do Neon (pooled) |
 | `ADMIN_PASSWORD` | Senha de acesso ao painel |
 | `SESSION_SECRET` | Texto aleatório que assina a sessão do painel |
-| `INFINITEPAY_API_KEY` | Opcional: faz o link de pagamento vencer junto com o prazo da reserva |
+| `INFINITEPAY_API_KEY` | Obrigatória para a reserva online (ou salve pelo painel): faz o link de pagamento vencer junto com o prazo da reserva |
 | `SITE_URL` | Opcional: endereço público fixo usado no retorno do pagamento |
 
 Localmente, copie `.env.example` para `.env.local`. Na Vercel, cadastre em **Settings → Environment Variables**.
