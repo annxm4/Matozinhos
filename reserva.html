@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Minha reserva</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body class="pg-reserva">
+
+<header class="topo solido">
+  <a class="marca" href="./"><span class="marca-folha" aria-hidden="true"></span><span>Início</span></a>
+</header>
+
+<main class="secao secao-creme minha">
+  <p class="sobrelinha">Minha reserva</p>
+  <h2 id="mrTitulo">Consulte sua reserva</h2>
+
+  <form class="cartao-mr" id="fBusca">
+    <p class="texto">Use o código que você recebeu ao reservar e o mesmo WhatsApp informado na reserva.</p>
+    <div class="campos">
+      <label>Código da reserva <input type="text" id="mrCodigo" required maxlength="6" autocomplete="off" placeholder="Ex.: K7Q2MX"></label>
+      <label>WhatsApp com DDD <input type="tel" id="mrTel" required inputmode="tel" autocomplete="tel"></label>
+    </div>
+    <p class="erro" id="mrErro" role="alert"></p>
+    <button type="submit" class="btn btn-destaque" id="mrBuscar">Ver reserva</button>
+  </form>
+
+  <section class="cartao-mr" id="mrResultado" hidden aria-live="polite"></section>
+</main>
+
+<script src="js/core.js"></script>
+<script src="js/reserva.js"></script>
+</body>
+</html>

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/site.css">
 </head>
 <body>
@@ -19,6 +20,7 @@
     <a href="#comodidades">Comodidades</a>
     <a href="#fotos">Fotos</a>
     <a href="#local">Localização</a>
+    <a href="reserva.html">Minha reserva</a>
   </nav>
   <a class="btn btn-claro" href="#reservas">Ver datas</a>
 </header>
@@ -112,8 +114,30 @@
 <footer class="rodape">
   <span data-t="nome">Sítio em Matozinhos</span>
   <span data-t="cidade">Matozinhos – MG</span>
+  <a href="reserva.html">Minha reserva</a>
   <a href="admin.html">Área do proprietário</a>
 </footer>
+
+<dialog class="dlg" id="dlgReservar">
+  <form id="fReservar" method="dialog">
+    <button type="button" class="dlg-x" id="rvFechar" aria-label="Fechar">×</button>
+    <h2>Reservar e pagar</h2>
+    <p class="dlg-datas" id="rvDatas"></p>
+    <div class="campos">
+      <label>Nome completo <input type="text" id="rvNome" autocomplete="name" required minlength="3"></label>
+      <label>WhatsApp com DDD <input type="tel" id="rvTel" autocomplete="tel" inputmode="tel" required placeholder="31 9XXXX-XXXX"></label>
+      <label>E-mail <input type="email" id="rvEmail" autocomplete="email" placeholder="para receber o comprovante"></label>
+      <label>Quantas pessoas <input type="number" id="rvHosp" min="1" max="999" inputmode="numeric"></label>
+    </div>
+    <label>Observações <textarea id="rvObs" rows="2" maxlength="500" placeholder="Horário de chegada, ocasião especial..."></textarea></label>
+    <fieldset class="modos" id="rvModos"><legend>Como prefere pagar?</legend></fieldset>
+    <div class="politica" id="rvPolitica" hidden></div>
+    <label class="aceite"><input type="checkbox" id="rvAceite" required> Li e aceito as regras da casa e a política de cancelamento.</label>
+    <p class="erro" id="rvErro" role="alert"></p>
+    <button type="submit" class="btn btn-destaque btn-cheio" id="rvPagar">Ir para o pagamento</button>
+    <p class="dica-pag">Pagamento seguro pela InfinitePay (Pix ou cartão). As datas ficam reservadas para você por alguns minutos enquanto paga.</p>
+  </form>
+</dialog>
 
 <dialog class="visor" id="visor">
   <button type="button" class="visor-x" id="visorX" aria-label="Fechar">×</button>
