@@ -44,7 +44,9 @@
     }
 
     $('#enderecoTxt').textContent = S.endereco || 'O endereço completo é enviado na confirmação da reserva.';
-    $('#mapa').src = 'https://www.google.com/maps?q=' + encodeURIComponent(S.endereco || 'Matozinhos, MG') + '&output=embed';
+    const local = C.localMapa(S);
+    $('#mapa').src = C.mapaEmbed(local.q);
+    $('#btnRota').href = C.mapaLink(local.q);
     if (zap()) { $('#btnZapLocal').href = linkZap(`Olá! Gostaria de saber mais sobre o ${S.nome}.`); $('#btnZapLocal').target = '_blank'; }
 
     $('#mesAnt').onclick = () => mover(-1);

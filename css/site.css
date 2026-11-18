@@ -32,6 +32,7 @@ a { color: inherit; }
 .btn-destaque:hover { background: var(--terra-2); }
 .btn-contorno { border-color: rgba(255,255,255,.7); color: #fff; }
 .btn-claro { background: var(--creme); color: var(--verde); padding: 9px 18px; }
+.btn-linha { border-color: var(--verde); color: var(--verde); margin-left: 8px; }
 .btn-zap { background: #1faa59; color: #fff; width: 100%; margin-top: 14px; }
 
 /* Topo */

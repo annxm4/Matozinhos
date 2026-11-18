@@ -162,6 +162,7 @@
   function desenhar() {
     document.querySelectorAll('#abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
     $('#painel').innerHTML = ({ reservas: vReservas, precos: vPrecos, fotos: vFotos, site: vSite })[aba]();
+    if (aba === 'site') previaMapa();
     barra();
   }
   const painel = $('#painel');
@@ -172,7 +173,21 @@
     if (el.dataset.tipo === 'num') v = v === '' ? (el.dataset.vazio === 'null' ? null : 0) : Number(v);
     if (el.dataset.tipo === 'linhas') v = v.split('\n').map((x) => x.trim()).filter(Boolean);
     definir(D, k, v); marcar();
+    if (/^site\.(mapa|endereco|cidade)$/.test(k)) { clearTimeout(previaMapa.t); previaMapa.t = setTimeout(previaMapa, 700); }
   });
+  function previaMapa() {
+    const fr = $('#mapaPrev'), av = $('#mapaAviso');
+    if (!fr) return;
+    const local = C.localMapa(D.site);
+    const curto = /goo\.gl|maps\.app/i.test(D.site.mapa || '');
+    av.textContent = curto
+      ? 'Links curtos (maps.app.goo.gl) não trazem a localização. Cole as coordenadas ou o link completo do navegador.'
+      : local.exato ? 'Usando a localização exata. Confira o alfinete abaixo.'
+        : 'Sem localização exata: o mapa procura pelo endereço + cidade e pode errar o ponto.';
+    av.classList.toggle('alerta', curto || !local.exato);
+    const url = C.mapaEmbed(local.q);
+    if (fr.src !== url) fr.src = url;
+  }
   painel.addEventListener('change', (e) => {
     if (e.target.id === 'envio') return enviarFotos(e.target.files);
     if (e.target.dataset.k && $('#calAdmin')) atualizarCal();
@@ -504,7 +519,17 @@
         ${txt('whatsapp', 'WhatsApp para reservas (com DDD)', 'inputmode="tel" placeholder="31 9XXXX-XXXX"')}
         ${txt('cidade', 'Cidade')}
       </div>
-      ${txt('endereco', 'Endereço ou ponto de referência (aparece no site e no mapa)', 'placeholder="Deixe vazio para mostrar só a cidade"')}
+      ${txt('endereco', 'Endereço ou ponto de referência (aparece escrito no site)', 'placeholder="Ex.: Rua Capim Branco, 125 – Bairro"')}
+      ${txt('mapa', 'Localização exata no mapa (coordenadas ou link do Google Maps)', 'placeholder="Ex.: -19.5571, -44.0812"')}
+      <details class="dica"><summary>Como pegar a localização exata</summary>
+        <ol>
+          <li>Abra o <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a> e ache o sítio.</li>
+          <li><b>No computador:</b> clique com o botão direito em cima do sítio e clique nos números que aparecem (ex.: -19.55, -44.08). Eles são copiados.</li>
+          <li><b>No celular:</b> toque e segure em cima do sítio até aparecer o alfinete; os números aparecem na busca. Toque neles para copiar.</li>
+          <li>Cole aqui. Também vale colar o link do navegador (o que tem <code>@-19.5...</code>).</li>
+        </ol></details>
+      <p class="dica" id="mapaAviso"></p>
+      <iframe class="mapa-prev" id="mapaPrev" title="Prévia do mapa" loading="lazy" referrerpolicy="no-referrer"></iframe>
       <p class="dica">Sem WhatsApp cadastrado, o botão de pedir reserva não aparece no site.</p>
     </section>
     <section class="bloco"><h2>Estadia</h2>
