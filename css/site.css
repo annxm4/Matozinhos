@@ -218,3 +218,6 @@ a { color: inherit; }
 .cartao-mr .btn-linha { margin-left: 0; }
 .cartao-mr .politica { margin-top: 14px; } .cartao-mr .politica p { margin: 4px 0 0; }
 .cartao-mr .link { margin-top: 12px; color: var(--verde-3); }
+.politica p { margin: 4px 0 10px; }
+.politica p:last-child { margin-bottom: 0; }
+.dlg [hidden] { display: none !important; }
