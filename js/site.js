@@ -206,9 +206,17 @@
     $('#rvModos').innerHTML = '<legend>Como prefere pagar?</legend>' + modos.map((m, i) => `
       <label class="modo"><input type="radio" name="rvModo" value="${m.modo}" ${i === 0 ? 'checked' : ''}>
         <span><strong>${esc(m.rotulo)} · ${C.moeda(m.valor)}</strong><small>${esc(m.detalhe)}</small></span></label>`).join('');
-    const pol = [D.precos.online.politica, ...(D.site.regras || [])].filter(Boolean);
-    $('#rvPolitica').hidden = !pol.length;
-    $('#rvPolitica').innerHTML = pol.length ? '<strong>Antes de pagar</strong><ul>' + pol.map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
+    // Mostra só o que o proprietário preencheu, e o aceite cita só o que aparece na tela.
+    const politica = String(D.precos.online.politica || '').trim(), regras = (D.site.regras || []).filter(Boolean);
+    const blocos = [];
+    if (politica) blocos.push(`<strong>Política de cancelamento</strong><p>${esc(politica)}</p>`);
+    if (regras.length) blocos.push(`<strong>Regras da casa</strong><ul>${regras.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
+    $('#rvPolitica').hidden = !blocos.length;
+    $('#rvPolitica').innerHTML = blocos.join('');
+    const itens = [regras.length && 'as regras da casa', politica && 'a política de cancelamento'].filter(Boolean);
+    $('#rvAceiteL').hidden = !itens.length;
+    $('#rvAceite').required = !!itens.length;
+    $('#rvAceiteTxt').textContent = `Li e aceito ${itens.join(' e ')}.`;
     $('#rvErro').textContent = '';
     try { const s = JSON.parse(localStorage.getItem('sitio_cliente')) || {}; ['Nome', 'Tel', 'Email'].forEach((k) => { if (s[k] && !$('#rv' + k).value) $('#rv' + k).value = s[k]; }); } catch (e) { /* sem dados salvos */ }
     dlg.showModal();

@@ -517,6 +517,7 @@
         <span></span>
       </div>
       <div class="chave" id="chaveIP"><p class="dica">Verificando a chave de API…</p></div>
+      ${P.online.ativo && !String(P.online.politica || '').trim() ? '<p class="dica alerta">A reserva online está ligada sem política de cancelamento. Preencha abaixo para o cliente saber as regras de reembolso antes de pagar (as regras da casa ficam na aba Site).</p>' : ''}
       <label>Política de cancelamento (aparece antes de pagar)
         <textarea rows="3" data-k="precos.online.politica" placeholder="Ex.: Cancelamento com reembolso total até 15 dias antes da entrada. Depois disso, o sinal não é devolvido.">${esc(P.online.politica)}</textarea></label>
       <p class="dica">O cliente escolhe as datas, preenche os dados e paga no checkout da InfinitePay. As datas ficam seguras pelo tempo acima; se ele não pagar, voltam a ficar livres. Pagamentos confirmados aparecem na aba Reservas. Estornos são feitos no app da InfinitePay.</p>
