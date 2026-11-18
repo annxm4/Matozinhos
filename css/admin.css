@@ -124,3 +124,9 @@ dialog h2 { font-size: 1.4rem; margin-bottom: 14px; }
   .cd { min-height: 52px; }
   .cd small { font-size: .58rem; }
 }
+
+/* Localização no mapa */
+details.dica summary { cursor: pointer; color: var(--terra); font-weight: 600; }
+details.dica ol { margin: 8px 0 0; padding-left: 20px; }
+.dica.alerta { color: var(--perigo); }
+.mapa-prev { width: 100%; height: 260px; border: 0; border-radius: 14px; background: var(--linha); margin-bottom: 12px; }

@@ -78,6 +78,7 @@
         whatsapp: '',
         cidade: 'Matozinhos – MG',
         endereco: '',
+        mapa: '', // coordenadas "lat, lng" ou link do Google Maps
         capacidade: '',
         checkin: '',
         checkout: '',
@@ -112,6 +113,21 @@
       cripto: null,
     };
   };
+
+  // Ponto do mapa. Prioridade: campo "mapa" (coordenadas/link) > endereço + cidade > cidade.
+  C.localMapa = (S) => {
+    const m = String(S.mapa || '').trim();
+    if (m) {
+      const pin = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/.exec(m) // marcador de um lugar no link
+        || /(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/.exec(m); // "lat, lng" ou @lat,lng
+      if (pin) return { q: `${pin[1]},${pin[2]}`, exato: true };
+      if (!/^https?:/i.test(m)) return { q: m, exato: true };
+    }
+    const partes = [S.endereco, S.cidade].map((x) => String(x || '').trim()).filter(Boolean);
+    return { q: partes.join(', ') || 'Matozinhos, MG', exato: false };
+  };
+  C.mapaEmbed = (q) => 'https://maps.google.com/maps?q=' + encodeURIComponent(q) + '&z=16&output=embed';
+  C.mapaLink = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
 
   C.normalizar = (d) => {
     const p = C.padrao();
