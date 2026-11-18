@@ -19,20 +19,11 @@
     <p class="sub">Gerencie reservas, preços, fotos e textos do site.</p>
 
     <form id="fToken">
-      <label>Chave de acesso do GitHub (token)
-        <input type="password" id="token" autocomplete="off" required placeholder="ghp_...">
+      <label>Senha de acesso
+        <input type="password" id="token" autocomplete="current-password" required>
       </label>
       <button class="bt bt-pri" type="submit">Continuar</button>
-      <div class="passos">
-        <p><b>Ainda não tem a chave?</b></p>
-        <ol>
-          <li>Toque em <a target="_blank" rel="noopener" href="https://github.com/settings/tokens/new?scopes=public_repo&description=Painel%20do%20sitio">Criar chave no GitHub</a> (já vem tudo marcado).</li>
-          <li>Em <b>Expiration</b>, escolha <b>No expiration</b> para não precisar refazer.</li>
-          <li>Role até o fim e toque em <b>Generate token</b>.</li>
-          <li>Copie o código que começa com <b>ghp_</b> e cole acima.</li>
-        </ol>
-        <p>A chave fica guardada só neste aparelho. Não compartilhe com ninguém.</p>
-      </div>
+      <p class="dica">A sessão fica guardada só neste aparelho por 90 dias.</p>
     </form>
 
     <form id="fSenha" hidden>
@@ -123,7 +114,6 @@
 
 <div class="aviso-flutuante" id="toast" role="status" hidden></div>
 
-<script src="js/config.js"></script>
 <script src="js/core.js"></script>
 <script src="js/admin.js"></script>
 </body>

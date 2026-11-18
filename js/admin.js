@@ -1,14 +1,10 @@
 (function () {
-  const C = window.Sitio, CFG = window.SITIO_CONFIG, esc = C.esc;
+  const C = window.Sitio, esc = C.esc;
   const $ = (s) => document.querySelector(s);
   const LS = 'sitio_painel';
-  const API = `https://api.github.com/repos/${CFG.owner}/${CFG.repo}/contents/`;
-  const RAW = `https://raw.githubusercontent.com/${CFG.owner}/${CFG.repo}/${CFG.branch}/`;
-  const ARQ = 'data/site.json';
 
-  let token = null, chave = null, D = null, sha = null, sujo = false, aba = 'reservas';
+  let token = null, chave = null, D = null, versao = 0, sujo = false, aba = 'reservas';
   let cal = null, editando = null, dataSel = null;
-  const previas = {}; // foto recém-enviada -> dataURL (o site leva ~1 min para publicar)
 
   /* ---------- Utilidades ---------- */
   function b64DeBytes(u) {
@@ -34,51 +30,33 @@
   }
   const num = (v) => (v === '' || v == null ? null : Number(v));
 
-  /* ---------- GitHub ---------- */
-  async function gh(caminho, { method = 'GET', body } = {}) {
-    const url = API + caminho + (method === 'GET' ? `?ref=${encodeURIComponent(CFG.branch)}` : '');
-    const r = await fetch(url, {
+  /* ---------- API (Vercel + Neon) ---------- */
+  async function api(caminho, { method = 'GET', body } = {}) {
+    const r = await fetch('api/' + caminho, {
       method, cache: 'no-store',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (r.status === 401) throw new Error('Chave de acesso inválida ou vencida. Saia e entre com uma chave nova.');
-    if (r.status === 403) throw new Error('Esta chave não tem permissão para gravar. Recarregue a página e crie uma chave nova pelo link da tela de entrada.');
-    return r;
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { localStorage.removeItem(LS); throw new Error(j.erro || 'Sessão expirada. Entre novamente.'); }
+    if (!r.ok) throw new Error(j.erro || 'Erro no servidor (' + r.status + ').');
+    return j;
   }
   async function carregar() {
-    const r = await gh(ARQ);
-    if (r.status === 404) {
-      const rep = await fetch(API.replace(/contents\/$/, ''), { headers: { Authorization: `Bearer ${token}` } });
-      if (!rep.ok) throw new Error(`A chave não dá acesso ao repositório ${CFG.owner}/${CFG.repo}.`);
-      D = C.padrao(); sha = null; return;
-    }
-    if (!r.ok) throw new Error('Não foi possível ler os dados do site (erro ' + r.status + ').');
-    const j = await r.json();
-    D = C.normalizar(JSON.parse(new TextDecoder().decode(bytesDeB64(j.content))));
-    sha = j.sha;
+    const j = await api('dados?admin=1');
+    D = j.dados ? C.normalizar(j.dados) : C.padrao();
+    versao = j.versao;
   }
-  async function salvar(msg) {
+  async function salvar() {
     const out = JSON.parse(JSON.stringify(D, (k, v) => (k === '_d' ? undefined : v)));
     for (let i = 0; i < D.reservas.length; i++) out.reservas[i].priv = await cifrar(D.reservas[i]._d || {});
-    const content = b64DeBytes(new TextEncoder().encode(JSON.stringify(out, null, 1)));
-    let r;
-    for (let tent = 0; tent < 2; tent++) {
-      r = await gh(ARQ, { method: 'PUT', body: { message: msg || 'Atualiza dados do site', content, branch: CFG.branch, sha: sha || undefined } });
-      if (r.ok) break;
-      if (r.status === 409 || r.status === 422) { // o arquivo mudou no GitHub: pega a versão atual e tenta de novo
-        const a = await gh(ARQ);
-        sha = a.ok ? (await a.json()).sha : null;
-      } else break;
-    }
-    if (!r.ok) throw new Error('Não foi possível salvar (erro ' + r.status + ').');
-    sha = (await r.json()).content.sha;
+    versao = (await api('dados', { method: 'PUT', body: { dados: out, versao } })).versao;
     sujo = false; barra();
   }
   async function publicar(msg) {
     const b = $('#btPublicar');
     b.disabled = true; b.textContent = 'Publicando…';
-    try { await salvar(msg); toast('Publicado! O site atualiza em cerca de 1 minuto.'); return true; }
+    try { await salvar(msg); toast('Publicado!'); return true; }
     catch (e) { toast(e.message, true); return false; }
     finally { b.disabled = false; b.textContent = 'Publicar alterações'; }
   }
@@ -126,8 +104,13 @@
   }
   $('#fToken').addEventListener('submit', async (e) => {
     e.preventDefault(); erroEntrada();
-    token = $('#token').value.trim();
-    try { await carregar(); pedirSenha(); } catch (err) { erroEntrada(err.message); }
+    try {
+      const r = await fetch('api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha: $('#token').value }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || 'Não foi possível entrar (erro ' + r.status + ').');
+      token = j.token;
+      await carregar(); pedirSenha();
+    } catch (err) { erroEntrada(err.message); }
   });
   $('#fSenha').addEventListener('submit', async (e) => {
     e.preventDefault(); erroEntrada();
@@ -364,7 +347,7 @@
     try {
       await salvar(msg);
       $('#dlgReserva').close(); desenhar();
-      toast('Salvo! O site atualiza em cerca de 1 minuto.');
+      toast('Salvo!');
     } catch (err) {
       D.reservas = JSON.parse(antes); D.reservas.forEach((r, i) => { r._d = antesD[i]; });
       $('#rErro').textContent = err.message;
@@ -448,7 +431,7 @@
   });
 
   /* ---------- Fotos ---------- */
-  const srcFoto = (f) => previas[f.arquivo] || RAW + f.arquivo;
+  const srcFoto = (f) => f.arquivo;
   function vFotos() {
     return `<div class="cab"><h1>Fotos</h1>
       <label class="bt bt-pri">+ Enviar fotos<input type="file" id="envio" accept="image/*" multiple hidden></label></div>
@@ -482,14 +465,11 @@
         prog(`Enviando foto ${i + 1} de ${lista.length}…`);
         let url;
         try { url = await reduzir(lista[i]); } catch (e) { toast(`Não foi possível ler "${lista[i].name}".`, true); continue; }
-        const nome = `fotos/${Date.now().toString(36)}-${i}.jpg`;
-        const r = await gh(nome, { method: 'PUT', body: { message: 'Adiciona foto', content: url.split(',')[1], branch: CFG.branch } });
-        if (!r.ok) throw new Error('Falha ao enviar a foto (erro ' + r.status + ').');
-        previas[nome] = url;
-        D.fotos.push({ arquivo: nome, legenda: '' });
+        const { arquivo } = await api('foto', { method: 'POST', body: { imagem: url } });
+        D.fotos.push({ arquivo, legenda: '' });
         ok++;
       }
-      if (ok) { await salvar('Atualiza fotos'); toast(`${ok} foto${ok > 1 ? 's enviadas' : ' enviada'}. O site atualiza em cerca de 1 minuto.`); }
+      if (ok) { await salvar('Atualiza fotos'); toast(`${ok} foto${ok > 1 ? 's enviadas' : ' enviada'}.`); }
     } catch (e) {
       toast(e.message, true);
       if (ok) marcar();
@@ -500,12 +480,8 @@
     const f = D.fotos[i];
     if (!confirm('Excluir esta foto do site?')) return;
     try {
-      const r = await gh(f.arquivo);
-      if (r.ok) {
-        const j = await r.json();
-        const del = await gh(f.arquivo, { method: 'DELETE', body: { message: 'Remove foto', sha: j.sha, branch: CFG.branch } });
-        if (!del.ok) throw new Error('Não foi possível excluir a foto (erro ' + del.status + ').');
-      }
+      const m = /^api\/foto\?id=([\w-]+)$/.exec(f.arquivo);
+      if (m) await api('foto?id=' + m[1], { method: 'DELETE' }); // fotos antigas em fotos/ ficam no repositório
       D.fotos.splice(i, 1);
       await salvar('Atualiza fotos');
       toast('Foto excluída.');
