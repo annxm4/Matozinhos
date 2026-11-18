@@ -4,7 +4,7 @@
   const $ = (s) => document.querySelector(s);
   // A InfinitePay pode anexar os parâmetros com um segundo "?" (reserva.html?c=X?slug=...): trata "?" como "&".
   const qs = new URLSearchParams(location.search.replace(/\?/g, '&'));
-  const retorno = { slug: qs.get('slug'), transaction_nsu: qs.get('transaction_nsu') };
+  const retorno = { slug: qs.get('slug'), transaction_nsu: qs.get('transaction_nsu'), order_nsu: qs.get('order_nsu') };
 
   let salvo = {};
   try { salvo = JSON.parse(localStorage.getItem('sitio_reserva')) || {}; } catch (e) { /* sem dados */ }

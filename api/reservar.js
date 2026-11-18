@@ -56,18 +56,20 @@ export default rota(async (req, res) => {
   ]);
   if (!inseridas.length) return enviar(res, 409, { erro: 'Estas datas acabaram de ser reservadas. Escolha outras.' });
 
-  let url;
+  let link;
   try {
-    url = await criarLink({
+    link = await criarLink({
       handle: ON.handle, origem: origemDe(req),
       reserva: { id, codigo, nome, telefone, email, valor_cobrado: cob.valor, expira_em: expira, parcelasSemJuros: ON.parcelasSemJuros,
-        descricao: `${D.site.nome} – ${C.brData(inicio)} a ${C.brData(fim)} – ${cob.rotulo}` },
+        // O código vem primeiro: é por ele que o aviso de pagamento acha a reserva (o order_nsu volta trocado).
+        descricao: `Reserva ${codigo} – ${D.site.nome} – ${C.brData(inicio)} a ${C.brData(fim)} – ${cob.rotulo}` },
     });
   } catch (e) {
     await q`DELETE FROM reservas_online WHERE id = ${id}`;
     if (e.publico) return enviar(res, e.status || 503, { erro: e.message });
     throw e;
   }
-  await q`UPDATE reservas_online SET checkout_url = ${url} WHERE id = ${id}`;
+  const url = link.url;
+  await q`UPDATE reservas_online SET checkout_url = ${url}, ip_link = ${JSON.stringify(link)}::jsonb WHERE id = ${id}`;
   enviar(res, 201, { codigo, url, expira });
 });

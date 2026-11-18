@@ -16,7 +16,7 @@ export default rota(async (req, res) => {
   }
   // Voltou do pagamento: confere na hora, sem esperar o aviso da InfinitePay.
   if (r.status === 'aguardando' && b.slug && b.transaction_nsu) {
-    try { r = (await confirmarPagamento({ id: r.id, slug: b.slug, transacao: b.transaction_nsu })) || r; } catch (e) { console.error(e); }
+    try { r = (await confirmarPagamento({ id: r.id, orderNsu: b.order_nsu, slug: b.slug, transacao: b.transaction_nsu })) || r; } catch (e) { console.error(e); }
   }
   const D = await carregarSite();
   const S = D.site, st = statusEfetivo(r);
