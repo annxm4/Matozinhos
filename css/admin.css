@@ -139,3 +139,7 @@ details.dica ol { margin: 8px 0 0; padding-left: 20px; }
 .res.on-cancelada, .res.on-expirada { opacity: .65; border-left-color: #9a9a8f; }
 .res .erro { color: var(--perigo); font-weight: 500; }
 .res.pisca { box-shadow: 0 0 0 3px var(--ouro); transition: box-shadow .3s; }
+
+/* Chave da InfinitePay */
+.chave { border-top: 1px solid var(--linha); margin-top: 8px; padding-top: 14px; }
+.chave-ok { margin: 0 0 10px; color: var(--verde-3, #2f5a3d); font-weight: 500; }

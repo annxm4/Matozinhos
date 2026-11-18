@@ -58,7 +58,7 @@ export default rota(async (req, res) => {
   try {
     url = await criarLink({
       handle: ON.handle, origem: origemDe(req),
-      reserva: { id, codigo, nome, telefone, email, valor_cobrado: cob.valor, expira_em: expira,
+      reserva: { id, codigo, nome, telefone, email, valor_cobrado: cob.valor, expira_em: expira, parcelasSemJuros: ON.parcelasSemJuros,
         descricao: `${D.site.nome} – ${C.brData(inicio)} a ${C.brData(fim)} – ${cob.rotulo}` },
     });
   } catch (e) {

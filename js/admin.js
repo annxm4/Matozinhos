@@ -177,6 +177,7 @@
     document.querySelectorAll('#abas button').forEach((b) => b.classList.toggle('ativa', b.dataset.aba === aba));
     $('#painel').innerHTML = ({ reservas: vReservas, precos: vPrecos, fotos: vFotos, site: vSite })[aba]();
     if (aba === 'site') previaMapa();
+    if (aba === 'precos') carregarChave();
     barra();
   }
   const painel = $('#painel');
@@ -264,6 +265,20 @@
     nova() { abrirReserva(null); },
     bloquear() { abrirReserva(null, null, 'bloqueio'); },
     editar(d) { abrirReserva(D.reservas.find((r) => r.id === d.id)); },
+    async salvarChave() {
+      const bt = $('#btChave'), chave = $('#chaveInput').value.trim();
+      bt.disabled = true; bt.textContent = 'Testando…';
+      try {
+        desenharChave(await api('pagamento', { method: 'PUT', body: { chave, handle: D.precos.online.handle } }));
+        toast('Chave testada e salva.');
+      } catch (e) { toast(e.message, true); bt.disabled = false; bt.textContent = 'Testar e salvar'; }
+    },
+    trocarChave() { desenharChave({ configurada: false, trocando: true }); },
+    cancelarChave() { carregarChave(); },
+    async removerChave() {
+      if (!confirm('Remover a chave de API? Os links de pagamento voltam a não ter prazo.')) return;
+      try { desenharChave(await api('pagamento', { method: 'DELETE' })); toast('Chave removida.'); } catch (e) { toast(e.message, true); }
+    },
     onConfirmar(d) { acaoOnline(d.id, 'confirmar', 'Confirmar esta reserva como paga? Use quando o pagamento foi recebido por fora ou o conflito foi resolvido.'); },
     onCancelar(d) { acaoOnline(d.id, 'cancelar', 'Cancelar esta reserva? As datas voltam a ficar livres. O estorno, se houver, é feito no app da InfinitePay.'); },
 
@@ -324,6 +339,27 @@
       ${prox.length ? `<ul class="lista">${prox.map(cartaoReserva).join('')}</ul>` : '<p class="vazio">Nenhuma reserva futura.</p>'}
       ${pass.length ? `<details><summary>Reservas passadas (${pass.length})</summary><ul class="lista">${pass.map(cartaoReserva).join('')}</ul></details>` : ''}`;
   }
+  /* ---------- Chave de API da InfinitePay ---------- */
+  async function carregarChave() {
+    try { desenharChave(await api('pagamento')); } catch (e) { desenharChave({ erro: e.message }); }
+  }
+  function desenharChave(st) {
+    const el = $('#chaveIP');
+    if (!el) return;
+    if (st.erro) { el.innerHTML = `<p class="dica alerta">${esc(st.erro)}</p>`; return; }
+    if (st.configurada) {
+      el.innerHTML = `<p class="chave-ok">Chave de API configurada (…${esc(st.final)})${st.origem === 'vercel' ? ' pela Vercel' : ''}. Os links vencem junto com o prazo da reserva e a opção de juros acima vale.</p>
+        <div class="acoes"><button type="button" class="bt bt-liso" data-a="trocarChave">Trocar chave</button>
+        ${st.origem === 'painel' ? '<button type="button" class="bt bt-perigo" data-a="removerChave">Remover</button>' : ''}</div>`;
+      return;
+    }
+    el.innerHTML = `<label>Chave de API da InfinitePay (opcional)
+        <input type="password" id="chaveInput" autocomplete="off" placeholder="inchk_..."></label>
+      <div class="acoes"><button type="button" class="bt bt-pri" id="btChave" data-a="salvarChave">Testar e salvar</button>
+      ${st.trocando ? '<button type="button" class="bt bt-liso" data-a="cancelarChave">Cancelar</button>' : ''}</div>
+      <p class="dica">${st.trocando ? '' : 'Sem chave, o link de pagamento não vence (quem pagar atrasado vira conflito) e os juros seguem a configuração da conta. '}A chave é gerada no app da InfinitePay, testada com a InfiniteTag acima e guardada só no servidor; ela não aparece mais depois de salva.</p>`;
+  }
+
   /* ---------- Reservas online ---------- */
   const ROT_ON = { aguardando: 'Aguardando pagamento', confirmada: 'Paga', conflito: 'Conflito de datas', cancelada: 'Cancelada', expirada: 'Não pagou' };
   const MODO_ON = { sinal: 'sinal', caucao: 'caução', integral: 'valor total' };
@@ -471,6 +507,16 @@
         <label>Segurar datas por (min)<input type="number" min="10" max="1440" step="5" data-tipo="num" data-k="precos.online.minutos" value="${P.online.minutos}"></label>
       </div>
       <label class="chk"><input type="checkbox" data-tipo="bool" data-k="precos.online.integral" ${P.online.integral ? 'checked' : ''}> Permitir pagar o valor total online (Pix ou cartão em até 12x)</label>
+      <div class="g2">
+        <label>Juros do parcelamento no cartão
+          <select data-tipo="num" data-vazio="null" data-k="precos.online.parcelasSemJuros">
+            <option value="" ${P.online.parcelasSemJuros == null ? 'selected' : ''}>Seguir a configuração da conta</option>
+            <option value="0" ${P.online.parcelasSemJuros === 0 ? 'selected' : ''}>O cliente paga os juros sempre</option>
+            ${[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<option value="${n}" ${P.online.parcelasSemJuros === n ? 'selected' : ''}>Sem juros para o cliente até ${n}x (você assume)</option>`).join('')}
+          </select></label>
+        <span></span>
+      </div>
+      <div class="chave" id="chaveIP"><p class="dica">Verificando a chave de API…</p></div>
       <label>Política de cancelamento (aparece antes de pagar)
         <textarea rows="3" data-k="precos.online.politica" placeholder="Ex.: Cancelamento com reembolso total até 15 dias antes da entrada. Depois disso, o sinal não é devolvido.">${esc(P.online.politica)}</textarea></label>
       <p class="dica">O cliente escolhe as datas, preenche os dados e paga no checkout da InfinitePay. As datas ficam seguras pelo tempo acima; se ele não pagar, voltam a ficar livres. Pagamentos confirmados aparecem na aba Reservas. Estornos são feitos no app da InfinitePay.</p>

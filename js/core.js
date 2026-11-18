@@ -113,6 +113,7 @@
           sinalPct: 30,
           integral: true,    // permite pagar o total online (cartão em até 12x ou Pix)
           minutos: 30,       // tempo que as datas ficam seguras aguardando o pagamento
+          parcelasSemJuros: null, // null = regra da conta; 0 = cliente paga os juros; N = você assume até Nx (exige chave)
           politica: '',
         },
       },
