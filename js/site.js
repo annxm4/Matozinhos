@@ -5,7 +5,7 @@
   let D, ocup, hoje, base, ci = null, co = null, fotoAtual = 0;
   const LIMITE_MESES = 18;
 
-  fetch('data/site.json?v=' + Date.now())
+  fetch('api/dados')
     .then((r) => (r.ok ? r.json() : {}))
     .catch(() => ({}))
     .then((d) => { D = C.normalizar(d); iniciar(); });
