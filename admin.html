@@ -98,6 +98,30 @@
   </form>
 </dialog>
 
+<!-- Contrato de uma reserva lançada no painel -->
+<dialog id="dlgContrato">
+  <form id="fContrato" method="dialog">
+    <h2 id="cTitulo">Gerar contrato</h2>
+    <p class="dica" id="cDatas"></p>
+    <div class="g2">
+      <label>Nome completo do hóspede <input type="text" id="cNome" required maxlength="120" autocomplete="off"></label>
+      <label>Telefone / WhatsApp <input type="tel" id="cTel" autocomplete="off"></label>
+      <label>E-mail (opcional) <input type="email" id="cEmail" autocomplete="off"></label>
+      <label>Número de hóspedes <input type="number" id="cHosp" min="1" step="1"></label>
+      <label>Valor total da locação (R$) <input type="number" id="cTotal" required min="0" step="0.01" inputmode="decimal"></label>
+      <label>Valor já pago (R$) <input type="number" id="cPago" min="0" step="0.01" inputmode="decimal"></label>
+    </div>
+    <label>Como foi pago (opcional) <input type="text" id="cForma" maxlength="120" placeholder="Ex.: sinal pago por Pix ao locador"></label>
+    <p class="dica">O cliente confere estes dados no contrato e preenche CPF e endereço na hora de assinar. Enquanto não for assinado, você pode atualizar os dados aqui.</p>
+    <p class="erro" id="cErro" role="alert"></p>
+    <div class="acoes">
+      <span class="esp"></span>
+      <button type="button" class="bt bt-liso" id="cCancelar">Cancelar</button>
+      <button type="submit" class="bt bt-pri" id="cSalvar">Gerar contrato</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Preço de uma data -->
 <dialog id="dlgData">
   <form id="fData" method="dialog">

@@ -1,20 +1,66 @@
 // Contrato pelo link enviado ao locatário (o token do link é a chave de acesso).
 // GET  /api/contrato?t=TOKEN  -> contrato pendente (modelo + dados para pré-visualizar) ou assinado (texto final + registro)
 // POST /api/contrato { t, nome, cpf, rg, endereco, aceite, assinatura }  -> assina
-import { rota, enviar, lerCorpo, consulta, preparar, sql } from '../lib/servidor.js';
+// Painel (exige sessão):
+// GET  /api/contrato?painel=1                       -> contratos das reservas lançadas no painel
+// PUT  /api/contrato { online: id }                 -> gera o contrato de uma reserva online paga
+// PUT  /api/contrato { painel: id, inicio, fim, nome, telefone, email, hospedes, total, pago, forma }
+//                                                   -> gera ou atualiza (se pendente) o contrato de uma reserva do painel
+import { rota, enviar, lerCorpo, consulta, preparar, sql, autenticado } from '../lib/servidor.js';
 import { carregarSite } from '../lib/reservas.js';
-import { variaveis, prazoAssinatura, cpfValido, fmtCpf, hashContrato } from '../lib/contratos.js';
+import { variaveis, prazoAssinatura, cpfValido, fmtCpf, hashContrato, garantirContrato, salvarContratoPainel, reservaDoContrato, PAINEL, digitos } from '../lib/contratos.js';
 import '../js/core.js';
 
 const C = globalThis.Sitio;
 const TOKEN = /^[\w-]{20,40}$/;
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 async function buscar(token) {
   if (!TOKEN.test(token || '')) return null;
   const [c] = await sql()`SELECT * FROM contratos WHERE token = ${token}`;
   if (!c) return null;
-  const [r] = await sql()`SELECT * FROM reservas_online WHERE id = ${c.reserva_id}`;
+  const r = await reservaDoContrato(c);
   return r ? { c, r } : null;
+}
+
+const resumo = (c, r, D) => ({ token: c.token, status: c.status, assinado_em: c.assinado_em, prazo: prazoAssinatura(r, D).toISOString(), codigo: r.codigo });
+
+async function painel(req, res) {
+  if (!autenticado(req)) return enviar(res, 401, { erro: 'Sessão expirada. Entre novamente.' });
+  const D = await carregarSite();
+  if (req.method === 'GET') {
+    const linhas = await sql()`SELECT * FROM contratos WHERE reserva_id LIKE ${PAINEL + '%'}`;
+    return enviar(res, 200, linhas.filter((c) => c.reserva).map((c) => ({ id: c.reserva_id.slice(PAINEL.length), ...resumo(c, c.reserva, D) })),
+      { 'Cache-Control': 'no-store' });
+  }
+  const b = await lerCorpo(req);
+  if (!String(D.contrato.modelo || '').trim()) return enviar(res, 400, { erro: 'Preencha o modelo do contrato em Preços → Contrato de locação.' });
+  if (b.online) {
+    const [r] = await sql()`SELECT * FROM reservas_online WHERE id = ${String(b.online)}`;
+    if (!r) return enviar(res, 404, { erro: 'Reserva não encontrada.' });
+    if (r.status !== 'confirmada') return enviar(res, 400, { erro: 'O contrato é gerado só para reservas confirmadas.' });
+    const c = await garantirContrato(r, D, true);
+    return enviar(res, 200, resumo(c, r, D));
+  }
+  if (b.painel) {
+    const x = {
+      inicio: b.inicio, fim: b.fim, nome: String(b.nome || '').trim().slice(0, 120), telefone: digitos(b.telefone).slice(0, 13),
+      email: String(b.email || '').trim().slice(0, 160), hospedes: Number(b.hospedes) > 0 ? Math.min(Number(b.hospedes), 999) : null,
+      total: Math.max(Number(b.total) || 0, 0), pago: Math.max(Number(b.pago) || 0, 0), forma: String(b.forma || '').trim().slice(0, 120),
+    };
+    if (!/^[\w-]{4,40}$/.test(String(b.painel))) return enviar(res, 400, { erro: 'Reserva inválida.' });
+    if (!DATA.test(x.inicio || '') || !DATA.test(x.fim || '') || !(x.inicio < x.fim)) return enviar(res, 400, { erro: 'Datas inválidas.' });
+    if (x.nome.length < 3) return enviar(res, 400, { erro: 'Informe o nome do hóspede.' });
+    if (!(x.total > 0)) return enviar(res, 400, { erro: 'Informe o valor total da locação.' });
+    try {
+      const c = await salvarContratoPainel(String(b.painel), x, D);
+      return enviar(res, 200, { id: String(b.painel), ...resumo(c, c.reserva, D) });
+    } catch (e) {
+      if (e.status) return enviar(res, e.status, { erro: e.message });
+      throw e;
+    }
+  }
+  enviar(res, 400, { erro: 'Pedido inválido.' });
 }
 
 function resposta(c, r, D) {
@@ -33,6 +79,8 @@ function resposta(c, r, D) {
 export default rota(async (req, res) => {
   await preparar();
   const semCache = { 'Cache-Control': 'no-store' };
+
+  if (req.method === 'PUT' || (req.method === 'GET' && consulta(req).get('painel') === '1')) return painel(req, res);
 
   if (req.method === 'GET') {
     const x = await buscar(consulta(req).get('t'));

@@ -6,6 +6,7 @@
   let token = null, chave = null, D = null, versao = 0, sujo = false, aba = 'reservas';
   let cal = null, editando = null, dataSel = null;
   let ONLINE = []; // reservas feitas pelo site (tabela própria no banco)
+  let CONTRATOS = new Map(); // contratos das reservas lançadas no painel, por id da reserva
 
   /* ---------- Utilidades ---------- */
   function b64DeBytes(u) {
@@ -51,6 +52,7 @@
   }
   async function carregarOnline() {
     try { ONLINE = await api('reservas'); } catch (e) { ONLINE = []; toast(e.message, true); }
+    try { CONTRATOS = new Map((await api('contrato?painel=1')).map((c) => [c.id, c])); } catch (e) { CONTRATOS = new Map(); }
   }
   // Reservas do painel + reservas online que seguram datas, no formato usado pelo calendário.
   const ST_ON = { confirmada: 'confirmada', aguardando: 'pendente', conflito: 'pendente' };
@@ -280,7 +282,16 @@
       try { desenharChave(await api('pagamento', { method: 'DELETE' })); toast('Chave removida.'); } catch (e) { toast(e.message, true); }
     },
     onConfirmar(d) { acaoOnline(d.id, 'confirmar', 'Confirmar esta reserva como paga? Use quando o pagamento foi recebido por fora ou o conflito foi resolvido.'); },
-    copiarContrato(d) { const r = ONLINE.find((x) => x.id === d.id); if (r && r.contrato) copiar(linkContrato(r)); },
+    copiarContrato(d) { copiar(linkContrato(d.token)); },
+    async gerarContratoOnline(d) {
+      try {
+        const c = await api('contrato', { method: 'PUT', body: { online: d.id } });
+        const r = ONLINE.find((x) => x.id === d.id);
+        if (r) r.contrato = c;
+        desenhar(); toast('Contrato gerado. Agora é só enviar ao cliente.');
+      } catch (e) { toast(e.message, true); }
+    },
+    gerarContrato(d) { abrirContrato(D.reservas.find((r) => r.id === d.id)); },
     restaurarContrato() {
       if (!confirm('Trocar o texto atual pelo modelo padrão? O que você escreveu no modelo será perdido.')) return;
       D.contrato.modelo = C.CONTRATO_PADRAO; marcar(); desenhar();
@@ -317,7 +328,7 @@
   /* ---------- Reservas ---------- */
   const ROT = { confirmada: 'Confirmada', pendente: 'Pendente', bloqueio: 'Bloqueio' };
   function cartaoReserva(r) {
-    const d = r._d || {}, n = C.noites(r.inicio, r.fim);
+    const d = r._d || {}, n = C.noites(r.inicio, r.fim), c = CONTRATOS.get(r.id);
     const tel = (d.telefone || '').replace(/\D/g, '');
     const falta = d.valor != null && d.sinal != null ? d.valor - d.sinal : null;
     return `<li class="res st-${r.status}">
@@ -325,9 +336,13 @@
         <span class="selo">${ROT[r.status]}</span>
         <p>${C.dataLonga(r.inicio)} → ${C.dataLonga(r.fim)} · ${n} noite${n > 1 ? 's' : ''}</p>
         ${d.valor != null ? `<p>${C.moeda(d.valor)}${d.sinal ? ` · sinal ${C.moeda(d.sinal)}` : ''}${falta > 0 ? ` · falta ${C.moeda(falta)}` : ''}</p>` : ''}
-        ${d.obs ? `<p class="obs">${esc(d.obs)}</p>` : ''}</div>
+        ${d.obs ? `<p class="obs">${esc(d.obs)}</p>` : ''}
+        ${r.status !== 'bloqueio' ? contratoInfo(c) : ''}</div>
       <div class="res-acoes">
         ${tel ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}">WhatsApp</a>` : ''}
+        ${r.status === 'bloqueio' ? '' : c ? botoesContrato(c, d.nome, r.inicio, r.fim, tel)
+          + (c.status !== 'assinado' ? `<button type="button" class="bt bt-liso" data-a="gerarContrato" data-id="${r.id}">Atualizar contrato</button>` : '')
+          : `<button type="button" class="bt bt-liso" data-a="gerarContrato" data-id="${r.id}">Gerar contrato</button>`}
         <button type="button" class="bt bt-liso" data-a="editar" data-id="${r.id}">Editar</button></div></li>`;
   }
   function vReservas() {
@@ -380,25 +395,28 @@
         ${r.email ? `<p>${esc(r.email)}</p>` : ''}
         ${r.obs ? `<p class="obs">${esc(r.obs)}</p>` : ''}
         ${r.status === 'conflito' ? '<p class="erro">O pagamento chegou depois do prazo ou as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}
-        ${contratoInfo(r)}</div>
+        ${contratoInfo(r.contrato)}</div>
       <div class="res-acoes">
         ${tel ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}">WhatsApp</a>` : ''}
-        ${r.contrato ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="${esc(linkContrato(r))}">Ver contrato</a>` : ''}
-        ${r.contrato && r.contrato.status !== 'assinado' ? `<button type="button" class="bt bt-liso" data-a="copiarContrato" data-id="${r.id}">Copiar link</button>
-          ${tel ? `<a class="bt bt-pri" target="_blank" rel="noopener" href="${esc(zapContrato(r, tel))}">Enviar contrato</a>` : ''}` : ''}
+        ${r.contrato ? botoesContrato(r.contrato, r.nome, r.inicio, r.fim, tel)
+          : (r.status === 'confirmada' ? `<button type="button" class="bt bt-liso" data-a="gerarContratoOnline" data-id="${r.id}">Gerar contrato</button>` : '')}
         ${['aguardando', 'conflito', 'expirada'].includes(r.status) ? `<button type="button" class="bt bt-liso" data-a="onConfirmar" data-id="${r.id}">Confirmar</button>` : ''}
         ${ativa ? `<button type="button" class="bt bt-perigo" data-a="onCancelar" data-id="${r.id}">Cancelar</button>` : ''}</div></li>`;
   }
-  /* ---------- Contrato das reservas online ---------- */
-  const linkContrato = (r) => `${location.origin}${location.pathname.replace(/[^/]*$/, '')}contrato.html?t=${encodeURIComponent(r.contrato.token)}`;
+  /* ---------- Contratos (reservas online e reservas lançadas no painel) ---------- */
+  const linkContrato = (token) => `${location.origin}${location.pathname.replace(/[^/]*$/, '')}contrato.html?t=${encodeURIComponent(token)}`;
   const dataHoraCurta = (iso) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso));
-  function zapContrato(r, tel) {
-    const txt = `Olá, ${r.nome.split(' ')[0]}! Aqui está o contrato da sua reserva ${r.codigo} no ${D.site.nome} (${C.brData(r.inicio)} a ${C.brData(r.fim)}). `
-      + `É só abrir o link, conferir, preencher seus dados e assinar pelo celular até ${dataHoraCurta(r.contrato.prazo)}:\n${linkContrato(r)}`;
+  function zapContrato(c, nome, inicio, fim, tel) {
+    const txt = `Olá, ${String(nome || '').split(' ')[0]}! Aqui está o contrato da sua reserva ${c.codigo} no ${D.site.nome} (${C.brData(inicio)} a ${C.brData(fim)}). `
+      + `É só abrir o link, conferir, preencher seus dados e assinar pelo celular até ${dataHoraCurta(c.prazo)}:\n${linkContrato(c.token)}`;
     return `https://wa.me/${tel.length <= 11 ? '55' + tel : tel}?text=${encodeURIComponent(txt)}`;
   }
-  function contratoInfo(r) {
-    const c = r.contrato;
+  function botoesContrato(c, nome, inicio, fim, tel) {
+    return `<a class="bt bt-liso" target="_blank" rel="noopener" href="${esc(linkContrato(c.token))}">Ver contrato</a>
+      ${c.status !== 'assinado' ? `<button type="button" class="bt bt-liso" data-a="copiarContrato" data-token="${esc(c.token)}">Copiar link</button>
+        ${tel ? `<a class="bt bt-pri" target="_blank" rel="noopener" href="${esc(zapContrato(c, nome, inicio, fim, tel))}">Enviar contrato</a>` : ''}` : ''}`;
+  }
+  function contratoInfo(c) {
     if (!c) return '';
     if (c.status === 'assinado') return `<p class="ct-ok">Contrato assinado em ${dataHoraCurta(c.assinado_em)}</p>`;
     const atrasado = new Date(c.prazo) < new Date();
@@ -475,6 +493,7 @@
     if (!editando) D.reservas.push(r);
     Object.assign(r, { inicio: a, fim: b, status: st });
     r._d = st === 'bloqueio' ? { obs: $('#rObs').value.trim() } : {
+      ...(r._d || {}), // mantém e-mail, hóspedes e forma de pagamento informados no contrato
       nome: $('#rNome').value.trim(), telefone: $('#rTel').value.trim(),
       valor: num($('#rValor').value), sinal: num($('#rSinal').value), obs: $('#rObs').value.trim(),
     };
@@ -499,6 +518,46 @@
       $('#rErro').textContent = err.message;
     } finally { bt.disabled = false; bt.textContent = 'Salvar'; }
   }
+
+  /* ---------- Contrato de reserva lançada no painel ---------- */
+  let contratoDe = null;
+  function abrirContrato(r) {
+    if (!r) return;
+    contratoDe = r;
+    const d = r._d || {}, c = CONTRATOS.get(r.id), n = C.noites(r.inicio, r.fim);
+    if (!String(D.contrato.modelo || '').trim()) return toast('Preencha o modelo do contrato em Preços → Contrato de locação.', true);
+    $('#cTitulo').textContent = c ? 'Atualizar contrato' : 'Gerar contrato';
+    $('#cSalvar').textContent = c ? 'Atualizar contrato' : 'Gerar contrato';
+    $('#cDatas').textContent = `${C.dataLonga(r.inicio)} → ${C.dataLonga(r.fim)} · ${n} noite${n > 1 ? 's' : ''}. Para mudar as datas, edite a reserva antes.`;
+    $('#cNome').value = d.nome || ''; $('#cTel').value = d.telefone || '';
+    $('#cEmail').value = d.email || ''; $('#cHosp').value = d.hospedes || '';
+    $('#cTotal').value = d.valor != null ? d.valor : ''; $('#cPago').value = d.sinal != null ? d.sinal : '';
+    $('#cForma').value = d.forma || '';
+    $('#cErro').textContent = '';
+    if (!D.contrato.locadorNome || !D.contrato.locadorDocumento) $('#cErro').textContent = 'Atenção: seu nome e CPF/CNPJ de locador estão em branco em Preços → Contrato de locação.';
+    $('#dlgContrato').showModal();
+  }
+  $('#cCancelar').onclick = () => $('#dlgContrato').close();
+  $('#fContrato').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = contratoDe, bt = $('#cSalvar'), rotulo = bt.textContent;
+    bt.disabled = true; bt.textContent = 'Gerando…'; $('#cErro').textContent = '';
+    const corpo = { painel: r.id, inicio: r.inicio, fim: r.fim, nome: $('#cNome').value, telefone: $('#cTel').value, email: $('#cEmail').value,
+      hospedes: $('#cHosp').value, total: $('#cTotal').value, pago: $('#cPago').value, forma: $('#cForma').value };
+    try {
+      const c = await api('contrato', { method: 'PUT', body: corpo });
+      CONTRATOS.set(r.id, c);
+      // Guarda os dados extras (e-mail, hóspedes, forma) junto da reserva, cifrados como o resto.
+      const antes = JSON.stringify(D.reservas, (k, v) => (k === '_d' ? undefined : v));
+      const antesD = D.reservas.map((x) => x._d);
+      r._d = { ...(r._d || {}), nome: corpo.nome.trim(), telefone: corpo.telefone.trim(), email: corpo.email.trim(),
+        hospedes: num(corpo.hospedes), valor: num(corpo.total), sinal: num(corpo.pago), forma: corpo.forma.trim() };
+      try { await salvar('Atualiza dados do contrato'); } catch (x) { D.reservas = JSON.parse(antes); D.reservas.forEach((y, i) => { y._d = antesD[i]; }); }
+      $('#dlgContrato').close(); desenhar();
+      toast('Contrato pronto. Use "Enviar contrato" para mandar pelo WhatsApp.');
+    } catch (err) { $('#cErro').textContent = err.message; }
+    finally { bt.disabled = false; bt.textContent = rotulo; }
+  });
 
   /* ---------- Preços ---------- */
   const campoNum = (k, v, extra) => `<input type="number" min="0" step="0.01" inputmode="decimal" data-tipo="num" data-k="${k}" value="${v == null ? '' : v}" ${extra || ''}>`;
