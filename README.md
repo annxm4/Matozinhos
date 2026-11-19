@@ -23,7 +23,6 @@ A InfinitePay não tem ambiente de testes: teste com uma reserva real de R$ 1,00
 2. Com o pagamento confirmado, o contrato da reserva é gerado (modelo congelado naquele momento) com um link único `contrato.html?t=…`.
 3. Na aba **Reservas**, cada reserva paga mostra o status do contrato e os botões **Enviar contrato** (WhatsApp), **Copiar link** e **Ver contrato**. O cliente também vê **Assinar contrato** em `reserva.html`.
 4. O cliente confere o texto, preenche CPF e endereço e assina com o dedo. O site guarda o texto final, a assinatura, data/hora, IP, navegador e um código SHA-256; a página assinada pode ser salva em PDF.
-
 5. Reservas lançadas no painel: botão **Gerar contrato** no cartão da reserva. Os dados (nome, telefone, valores, hóspedes) são conferidos numa janela e enviados ao servidor só para o contrato; enquanto não for assinado, dá para **Atualizar contrato**. Reservas online pagas também têm **Gerar contrato** quando a geração automática está desligada.
 
 Arquivos: `contrato.html`, `js/contrato.js`, `api/contrato.js` e `lib/contratos.js` (tabela `contratos`).
