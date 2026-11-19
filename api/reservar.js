@@ -2,7 +2,7 @@
 // Recalcula o preço no servidor, segura as datas e devolve o link de pagamento da InfinitePay.
 import { randomBytes } from 'node:crypto';
 import { rota, enviar, lerCorpo, preparar, sql } from '../lib/servidor.js';
-import { C, ATIVA, carregarSite, hojeBR, digitos, novoCodigo, criarLink, origemDe, chaveInfinitePay, erroSemChave } from '../lib/reservas.js';
+import { C, ATIVA, sobrepoe, carregarSite, hojeBR, digitos, novoCodigo, criarLink, origemDe, chaveInfinitePay, erroSemChave } from '../lib/reservas.js';
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,8 +31,8 @@ export default rota(async (req, res) => {
   if (o.consulta) return enviar(res, 400, { erro: 'Estas datas têm valor sob consulta. Fale com o proprietário.' });
   if (o.n < o.minNoites) return enviar(res, 400, { erro: `A estadia mínima para estas datas é de ${o.minNoites} noites.` });
 
-  const ocup = C.ocupacao(D);
-  for (let d = inicio; d < fim; d = C.addDias(d, 1)) if (ocup.has(d)) return enviar(res, 409, { erro: 'Estas datas acabaram de ser reservadas. Escolha outras.' });
+  const saida = !!D.precos.bloquearSaida;
+  if (C.conflito(C.ocupacao(D), inicio, fim, saida)) return enviar(res, 409, { erro: 'Estas datas acabaram de ser reservadas. Escolha outras.' });
 
   const cob = C.cobrancaOnline(D, o, b.modo);
   if (!cob) return enviar(res, 400, { erro: 'Forma de pagamento indisponível.' });
@@ -51,7 +51,7 @@ export default rota(async (req, res) => {
     q`SELECT pg_advisory_xact_lock(7342001)`,
     q.query(`INSERT INTO reservas_online (id, codigo, inicio, fim, status, nome, telefone, email, hospedes, obs, modo, total, valor_cobrado, expira_em)
       SELECT $1, $2, $3, $4, 'aguardando', $5, $6, $7, $8, $9, $10, $11, $12, $13
-      WHERE NOT EXISTS (SELECT 1 FROM reservas_online WHERE inicio < $4 AND fim > $3 AND ${ATIVA})
+      WHERE NOT EXISTS (SELECT 1 FROM reservas_online WHERE ${sobrepoe(saida, '$3', '$4')} AND ${ATIVA})
       RETURNING id`, [id, codigo, inicio, fim, nome, telefone, email || null, hospedes, obs || null, cob.modo, o.total, cob.valor, expira]),
   ]);
   if (!inseridas.length) return enviar(res, 409, { erro: 'Estas datas acabaram de ser reservadas. Escolha outras.' });

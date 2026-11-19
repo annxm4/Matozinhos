@@ -101,11 +101,11 @@
     const [y, m] = hoje.split('-').map(Number);
     return (base.y - y) * 12 + (base.m - m);
   }
-  // Um dia pode ser saída se todas as noites desde a entrada estiverem livres.
+  // Um dia pode ser saída se todas as noites desde a entrada estiverem livres
+  // (e o próprio dia, quando o dia da saída fica bloqueado para limpeza).
   function podeSair(d) {
     if (!ci || co || d <= ci) return false;
-    for (let x = ci; x < d; x = C.addDias(x, 1)) if (ocup.has(x)) return false;
-    return true;
+    return !C.conflito(ocup, ci, d, D.precos.bloquearSaida);
   }
   function escolher(d) {
     if (ci && !co && podeSair(d)) co = d;

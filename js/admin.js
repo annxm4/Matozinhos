@@ -62,7 +62,7 @@
       _d: { nome: r.nome, telefone: r.telefone, valor: r.total, sinal: r.valor_pago },
     })));
   }
-  const ocupacaoGeral = (ignorar) => C.ocupacao({ reservas: todas() }, ignorar);
+  const ocupacaoGeral = (ignorar) => C.ocupacao({ reservas: todas() }, ignorar, !!D.precos.bloquearSaida);
   async function salvar() {
     const out = JSON.parse(JSON.stringify(D, (k, v) => (k === '_d' ? undefined : v)));
     for (let i = 0; i < D.reservas.length; i++) out.reservas[i].priv = await cifrar(D.reservas[i]._d || {});
@@ -222,10 +222,12 @@
       if (!d) return '<span></span>';
       const r = ocup.get(d), p = C.precoNoite(D, d);
       const cls = ['cd'];
+      const limpeza = ocup.limpeza.has(d);
       if (d === hoje) cls.push('hoje');
-      if (r) cls.push('st-' + r.status);
+      if (limpeza) cls.push('st-limpeza');
+      else if (r) cls.push('st-' + r.status);
       else if (p.tipo !== 'semana') cls.push('esp-' + p.tipo);
-      const rot = r ? (r.status === 'bloqueio' ? 'Bloqueado' : ((r._d && r._d.nome) || 'Reserva').split(' ')[0])
+      const rot = limpeza ? 'Limpeza' : r ? (r.status === 'bloqueio' ? 'Bloqueado' : ((r._d && r._d.nome) || 'Reserva').split(' ')[0])
         : (p.valor > 0 ? C.moeda(p.valor) : '—');
       return `<button type="button" class="${cls.join(' ')}" data-a="dia" data-d="${d}" title="${esc(p.rotulo)}"><b>${+d.slice(8)}</b><small>${esc(rot)}</small></button>`;
     }).join('');
@@ -235,7 +237,7 @@
       <button type="button" class="bt bt-liso" data-a="mes" data-n="1" aria-label="Próximo mês">›</button></div>
       <div class="cal-grade">${C.DIAS_C.map((x) => `<i>${x}</i>`).join('')}${cel}</div>
       <p class="leg"><span class="p st-confirmada"></span>Confirmada <span class="p st-pendente"></span>Pendente
-      <span class="p st-bloqueio"></span>Bloqueio <span class="p esp-feriado"></span>Feriado / especial</p></div>`;
+      <span class="p st-bloqueio"></span>Bloqueio ${D.precos.bloquearSaida ? '<span class="p st-limpeza"></span>Limpeza (dia da saída) ' : ''}<span class="p esp-feriado"></span>Feriado / especial</p></div>`;
   }
 
   // Atualiza os dias sem trocar os botões: trocar o elemento no meio de um toque faria o clique se perder.
@@ -484,8 +486,13 @@
     const a = $('#rInicio').value, b = $('#rFim').value, st = $('#rStatus').value;
     if (!(a < b)) { $('#rErro').textContent = 'A saída precisa ser depois da entrada.'; return; }
     const ocup = ocupacaoGeral(editando && editando.id);
-    for (let x = a; x < b; x = C.addDias(x, 1)) {
-      if (ocup.has(x)) { $('#rErro').textContent = `O dia ${C.brData(x)} já está ocupado por outra reserva.`; return; }
+    // Bloqueio de uso próprio não precisa de dia de limpeza; reservas, sim (quando a opção está ligada).
+    const choque = C.conflito(ocup, a, b, st !== 'bloqueio' && !!D.precos.bloquearSaida);
+    if (choque) {
+      $('#rErro').textContent = ocup.limpeza.has(choque) || choque === b
+        ? `O dia ${C.brData(choque)} é dia de limpeza (saída de uma reserva e entrada de outra no mesmo dia). Escolha outras datas ou desligue a opção em Preços.`
+        : `O dia ${C.brData(choque)} já está ocupado por outra reserva.`;
+      return;
     }
     const antes = JSON.stringify(D.reservas, (k, v) => (k === '_d' ? undefined : v));
     const antesD = D.reservas.map((r) => r._d);
@@ -581,6 +588,8 @@
         <label>Mínimo de noites<input type="number" min="1" step="1" data-tipo="num" data-k="precos.minNoites" value="${P.minNoites}"></label>
       </div>
       <p class="dica">O pacote semanal vale a cada 7 noites seguidas quando sai mais barato que as diárias, e não se aplica a estadias que pegam um período especial. Use 0 para desligar.</p>
+      <label class="chk"><input type="checkbox" data-tipo="bool" data-k="precos.bloquearSaida" ${P.bloquearSaida ? 'checked' : ''}> Bloquear o dia da saída para limpeza</label>
+      <p class="dica">Ligado: o dia em que o hóspede sai fica ocupado no calendário e ninguém pode entrar nesse dia. O preço continua contando só as noites (sexta a domingo = 2 diárias, com o domingo bloqueado para a limpeza). Bloqueios de uso próprio não ganham dia de limpeza.</p>
     </section>
 
     <section class="bloco"><h2>Reserva online (InfinitePay)</h2>

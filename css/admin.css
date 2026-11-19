@@ -81,6 +81,8 @@ textarea { resize: vertical; }
 .st-confirmada.cd, .p.st-confirmada { background: #2f5a3d; border-color: #2f5a3d; color: #fff; }
 .st-pendente.cd, .p.st-pendente { background: #f2c26b; border-color: #f2c26b; }
 .st-bloqueio.cd, .p.st-bloqueio { background: #9a9a8f; border-color: #9a9a8f; color: #fff; }
+.st-limpeza.cd, .p.st-limpeza { background: repeating-linear-gradient(135deg, #d9e6dc 0 6px, #eef4ef 6px 12px); border-color: #b7cdbd; }
+.st-limpeza.cd small { color: var(--verde-3); font-weight: 600; }
 .st-confirmada.cd small, .st-bloqueio.cd small { color: #fff; }
 .st-pendente.cd small { color: var(--tinta); }
 .leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .82rem; color: var(--suave); margin: 12px 0 0; }

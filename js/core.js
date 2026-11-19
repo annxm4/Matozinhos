@@ -169,6 +169,7 @@ Fica eleito o foro da comarca do imóvel para resolver qualquer questão relacio
         limpeza: 0,
         caucao: 0,
         minNoites: 1,
+        bloquearSaida: false, // dia da saída fica ocupado para limpeza (ninguém entra no dia em que outro sai)
         periodos: [], // { id, nome, inicio, fim, preco, minNoites }
         datas: {},    // { 'AAAA-MM-DD': preço }
         online: {
@@ -239,14 +240,23 @@ Fica eleito o foro da comarca do imóvel para resolver qualquer questão relacio
     return { valor: P.diasSemana[C.dow(data)] || 0, tipo: 'semana', rotulo: C.DIAS[C.dow(data)] };
   };
 
-  // Noites ocupadas: da entrada até a véspera da saída (o dia da saída fica livre para nova entrada).
-  C.ocupacao = (D, ignorarId) => {
-    const m = new Map();
-    (D.reservas || []).forEach((r) => {
-      if (r.id === ignorarId || !r.inicio || !r.fim) return;
-      for (let d = r.inicio; d < r.fim; d = C.addDias(d, 1)) m.set(d, r);
-    });
+  // Noites ocupadas: da entrada até a véspera da saída. Com "bloquear dia da saída" (precos.bloquearSaida),
+  // o dia da saída de cada reserva também fica ocupado (limpeza): ninguém entra no dia em que outro sai.
+  // Bloqueios (uso próprio/manutenção) não ganham dia de limpeza. Os dias de limpeza ficam em m.limpeza.
+  C.ocupacao = (D, ignorarId, saida) => {
+    if (saida === undefined) saida = !!(D.precos && D.precos.bloquearSaida);
+    const m = new Map(), lista = (D.reservas || []).filter((r) => r.id !== ignorarId && r.inicio && r.fim);
+    m.limpeza = new Set();
+    lista.forEach((r) => { for (let d = r.inicio; d < r.fim; d = C.addDias(d, 1)) m.set(d, r); });
+    if (saida) lista.forEach((r) => { if (r.status !== 'bloqueio' && !m.has(r.fim)) { m.set(r.fim, r); m.limpeza.add(r.fim); } });
     return m;
+  };
+  // Primeiro dia que impede a estadia de inicio a fim (ou null se estiver livre). Com o dia da saída bloqueado,
+  // a saída também precisa estar livre (pode cair num bloqueio de uso próprio, que não é de outra reserva).
+  C.conflito = (ocup, inicio, fim, saida) => {
+    for (let d = inicio; d < fim; d = C.addDias(d, 1)) if (ocup.has(d)) return d;
+    if (saida) { const x = ocup.get(fim); if (x && (x.status !== 'bloqueio' || ocup.limpeza.has(fim))) return fim; }
+    return null;
   };
 
   C.orcamento = (D, inicio, fim) => {
