@@ -280,6 +280,11 @@
       try { desenharChave(await api('pagamento', { method: 'DELETE' })); toast('Chave removida.'); } catch (e) { toast(e.message, true); }
     },
     onConfirmar(d) { acaoOnline(d.id, 'confirmar', 'Confirmar esta reserva como paga? Use quando o pagamento foi recebido por fora ou o conflito foi resolvido.'); },
+    copiarContrato(d) { const r = ONLINE.find((x) => x.id === d.id); if (r && r.contrato) copiar(linkContrato(r)); },
+    restaurarContrato() {
+      if (!confirm('Trocar o texto atual pelo modelo padrão? O que você escreveu no modelo será perdido.')) return;
+      D.contrato.modelo = C.CONTRATO_PADRAO; marcar(); desenhar();
+    },
     onCancelar(d) { acaoOnline(d.id, 'cancelar', 'Cancelar esta reserva? As datas voltam a ficar livres. O estorno, se houver, é feito no app da InfinitePay.'); },
 
     addFeriado() { D.feriados.push({ data: C.hoje(), nome: '', preco: null }); marcar(); desenhar(); },
@@ -374,12 +379,36 @@
         <p>Total ${C.moeda(r.total)} · ${MODO_ON[r.modo]} ${C.moeda(r.valor_cobrado)} · pago ${C.moeda(r.valor_pago)}${pg}${falta > 0 && r.status !== 'cancelada' ? ` · falta ${C.moeda(falta)}` : ''}</p>
         ${r.email ? `<p>${esc(r.email)}</p>` : ''}
         ${r.obs ? `<p class="obs">${esc(r.obs)}</p>` : ''}
-        ${r.status === 'conflito' ? '<p class="erro">O pagamento chegou depois do prazo ou as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}</div>
+        ${r.status === 'conflito' ? '<p class="erro">O pagamento chegou depois do prazo ou as datas já tinham outra reserva. Combine com o cliente: confirme ou cancele e estorne no app da InfinitePay.</p>' : ''}
+        ${contratoInfo(r)}</div>
       <div class="res-acoes">
         ${tel ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="https://wa.me/${tel.length <= 11 ? '55' + tel : tel}">WhatsApp</a>` : ''}
+        ${r.contrato ? `<a class="bt bt-liso" target="_blank" rel="noopener" href="${esc(linkContrato(r))}">Ver contrato</a>` : ''}
+        ${r.contrato && r.contrato.status !== 'assinado' ? `<button type="button" class="bt bt-liso" data-a="copiarContrato" data-id="${r.id}">Copiar link</button>
+          ${tel ? `<a class="bt bt-pri" target="_blank" rel="noopener" href="${esc(zapContrato(r, tel))}">Enviar contrato</a>` : ''}` : ''}
         ${['aguardando', 'conflito', 'expirada'].includes(r.status) ? `<button type="button" class="bt bt-liso" data-a="onConfirmar" data-id="${r.id}">Confirmar</button>` : ''}
         ${ativa ? `<button type="button" class="bt bt-perigo" data-a="onCancelar" data-id="${r.id}">Cancelar</button>` : ''}</div></li>`;
   }
+  /* ---------- Contrato das reservas online ---------- */
+  const linkContrato = (r) => `${location.origin}${location.pathname.replace(/[^/]*$/, '')}contrato.html?t=${encodeURIComponent(r.contrato.token)}`;
+  const dataHoraCurta = (iso) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso));
+  function zapContrato(r, tel) {
+    const txt = `Olá, ${r.nome.split(' ')[0]}! Aqui está o contrato da sua reserva ${r.codigo} no ${D.site.nome} (${C.brData(r.inicio)} a ${C.brData(r.fim)}). `
+      + `É só abrir o link, conferir, preencher seus dados e assinar pelo celular até ${dataHoraCurta(r.contrato.prazo)}:\n${linkContrato(r)}`;
+    return `https://wa.me/${tel.length <= 11 ? '55' + tel : tel}?text=${encodeURIComponent(txt)}`;
+  }
+  function contratoInfo(r) {
+    const c = r.contrato;
+    if (!c) return '';
+    if (c.status === 'assinado') return `<p class="ct-ok">Contrato assinado em ${dataHoraCurta(c.assinado_em)}</p>`;
+    const atrasado = new Date(c.prazo) < new Date();
+    return `<p class="${atrasado ? 'erro' : 'ct-pend'}">Contrato ${atrasado ? 'não assinado e o prazo já passou' : 'aguardando assinatura'} (prazo ${dataHoraCurta(c.prazo)})</p>`;
+  }
+  async function copiar(txt) {
+    try { await navigator.clipboard.writeText(txt); toast('Link copiado.'); }
+    catch (e) { prompt('Copie o link do contrato:', txt); }
+  }
+
   function vOnline() {
     if (!ONLINE.length) return D.precos.online.ativo ? '<h2>Reservas online</h2><p class="vazio">Nenhuma reserva feita pelo site ainda.</p>' : '';
     const hoje = C.hoje();
@@ -521,6 +550,22 @@
       <label>Política de cancelamento (aparece antes de pagar)
         <textarea rows="3" data-k="precos.online.politica" placeholder="Ex.: Cancelamento com reembolso total até 15 dias antes da entrada. Depois disso, o sinal não é devolvido.">${esc(P.online.politica)}</textarea></label>
       <p class="dica">O cliente escolhe as datas, preenche os dados e paga no checkout da InfinitePay. As datas ficam seguras pelo tempo acima; se ele não pagar, voltam a ficar livres. Pagamentos confirmados aparecem na aba Reservas. Estornos são feitos no app da InfinitePay.</p>
+    </section>
+
+    <section class="bloco"><h2>Contrato de locação</h2>
+      <label class="chk"><input type="checkbox" data-tipo="bool" data-k="contrato.ativo" ${D.contrato.ativo ? 'checked' : ''}> Gerar contrato para assinatura quando o pagamento for confirmado</label>
+      <div class="g4">
+        <label>Seu nome completo (locador)<input type="text" data-k="contrato.locadorNome" value="${esc(D.contrato.locadorNome)}" autocomplete="off"></label>
+        <label>Seu CPF ou CNPJ<input type="text" data-k="contrato.locadorDocumento" value="${esc(D.contrato.locadorDocumento)}" autocomplete="off"></label>
+        <label>Assinar até (horas antes da entrada)<input type="number" min="0" max="720" step="1" data-tipo="num" data-k="contrato.prazoHoras" value="${D.contrato.prazoHoras}"></label>
+      </div>
+      ${D.contrato.ativo && (!D.contrato.locadorNome || !D.contrato.locadorDocumento) ? '<p class="dica alerta">Preencha seu nome e CPF/CNPJ: eles entram no contrato como locador.</p>' : ''}
+      <label>Modelo do contrato
+        <textarea rows="16" class="modelo-contrato" data-k="contrato.modelo">${esc(D.contrato.modelo)}</textarea></label>
+      <div class="acoes"><button type="button" class="bt bt-liso" data-a="restaurarContrato">Restaurar modelo padrão</button></div>
+      <details class="variaveis"><summary>Campos que o site preenche sozinho</summary>
+        <ul>${Object.entries(C.CONTRATO_VARIAVEIS).map(([k, t]) => `<li><code>{${k}}</code> ${esc(t)}</li>`).join('')}</ul></details>
+      <p class="dica">Quando um pagamento é confirmado, o contrato da reserva é gerado com o modelo acima e aparece na aba Reservas com os botões <b>Enviar contrato</b> (WhatsApp) e <b>Copiar link</b>. O cliente também vê o botão <b>Assinar contrato</b> na página Minha reserva. Ele confere o texto, preenche CPF e endereço e assina com o dedo; o site guarda data, hora, IP e um código de verificação. Mudar o modelo depois não altera contratos já gerados. Recomendamos que um advogado revise o modelo.</p>
     </section>
 
     <section class="bloco"><h2>Feriados</h2>

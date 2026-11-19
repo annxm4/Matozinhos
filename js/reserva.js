@@ -64,6 +64,9 @@
         ${S.endereco ? `<dt>Endereço</dt><dd>${esc(S.endereco)} – ${esc(S.cidade)}</dd>` : ''}
       </dl>
       ${r.pagarUrl ? `<a class="btn btn-destaque btn-cheio" href="${esc(r.pagarUrl)}">Concluir pagamento</a>` : ''}
+      ${r.contrato ? `<div class="mr-contrato">${r.contrato.status === 'assinado'
+        ? `<p><b>Contrato assinado.</b> Você pode ver e baixar uma cópia.</p><a class="btn btn-linha" href="contrato.html?t=${encodeURIComponent(r.contrato.token)}">Ver contrato</a>`
+        : `<p><b>Assine o contrato de locação</b> até ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(r.contrato.prazo))}. A entrada depende dele.</p><a class="btn btn-destaque" href="contrato.html?t=${encodeURIComponent(r.contrato.token)}">Assinar contrato</a>`}</div>` : ''}
       ${linkZap ? `<a class="btn btn-linha btn-cheio" target="_blank" rel="noopener" href="${esc(linkZap)}">Falar com o proprietário</a>` : ''}
       ${S.politica ? `<div class="politica"><strong>Política de cancelamento</strong><p>${esc(S.politica)}</p></div>` : ''}
       ${S.regras && S.regras.length ? `<div class="politica"><strong>Regras da casa</strong><ul>${S.regras.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}

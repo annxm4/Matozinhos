@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Contrato de locação</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body class="pg-reserva pg-contrato">
+
+<header class="topo solido">
+  <a class="marca" href="./"><span class="marca-folha" aria-hidden="true"></span><span>Início</span></a>
+</header>
+
+<main class="secao secao-creme minha">
+  <p class="sobrelinha">Contrato de locação</p>
+  <h2 id="ctTitulo">Carregando…</h2>
+  <p class="erro" id="ctErroGeral" role="alert"></p>
+
+  <section class="cartao-mr" id="ctConteudo" hidden>
+    <div class="mr-status" id="ctStatus"></div>
+    <article class="contrato-texto" id="ctTexto"></article>
+
+    <form id="fAssinar" hidden>
+      <h3>Seus dados</h3>
+      <p class="texto">Preencha seus dados. Eles entram no contrato acima.</p>
+      <div class="campos">
+        <label>Nome completo <input type="text" id="ctNome" required maxlength="120" autocomplete="name"></label>
+        <label>CPF <input type="text" id="ctCpf" required inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off"></label>
+        <label>RG (opcional) <input type="text" id="ctRg" maxlength="30" autocomplete="off"></label>
+        <label>Endereço completo <input type="text" id="ctEnd" required maxlength="250" placeholder="Rua, número, bairro, cidade – UF" autocomplete="street-address"></label>
+      </div>
+
+      <h3>Assinatura</h3>
+      <p class="texto">Assine com o dedo ou com o mouse dentro do quadro.</p>
+      <div class="assinatura-quadro">
+        <canvas id="ctCanvas" aria-label="Quadro de assinatura"></canvas>
+        <span class="assinatura-linha" aria-hidden="true"></span>
+        <button type="button" class="link" id="ctLimpar">Limpar</button>
+      </div>
+
+      <label class="aceite"><input type="checkbox" id="ctAceite" required> <span>Li o contrato inteiro e concordo com todas as cláusulas.</span></label>
+      <p class="dica-pag privacidade">Seus dados (nome, CPF, RG, endereço, assinatura, data, hora e endereço IP) são usados apenas para este contrato e guardados com segurança pelo proprietário, conforme a LGPD.</p>
+      <p class="erro" id="ctErro" role="alert"></p>
+      <button type="submit" class="btn btn-destaque btn-cheio" id="ctAssinar">Assinar contrato</button>
+    </form>
+
+    <div id="ctAssinado" hidden></div>
+  </section>
+</main>
+
+<script src="js/core.js"></script>
+<script src="js/contrato.js"></script>
+</body>
+</html>

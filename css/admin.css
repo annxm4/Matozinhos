@@ -143,3 +143,13 @@ details.dica ol { margin: 8px 0 0; padding-left: 20px; }
 /* Chave da InfinitePay */
 .chave { border-top: 1px solid var(--linha); margin-top: 8px; padding-top: 14px; }
 .chave-ok { margin: 0 0 10px; color: var(--verde-3, #2f5a3d); font-weight: 500; }
+
+/* Contrato */
+.modelo-contrato { font-family: Georgia, 'Times New Roman', serif; font-size: .92rem; line-height: 1.55; }
+.variaveis { margin-top: 10px; font-size: .88rem; }
+.variaveis summary { cursor: pointer; font-weight: 500; }
+.variaveis ul { columns: 2 240px; margin: 8px 0 0; padding: 0; list-style: none; }
+.variaveis li { margin-bottom: 3px; break-inside: avoid; }
+.variaveis code { background: var(--creme); border-radius: 5px; padding: 1px 5px; font-size: .82rem; }
+.ct-ok { color: #2f5a3d; font-weight: 500; }
+.ct-pend { color: #8a6514; font-weight: 500; }

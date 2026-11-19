@@ -67,6 +67,71 @@
     return f.map(([data, nome]) => ({ data, nome, preco: null }));
   };
 
+  /* ---------- Contrato de locação por temporada ---------- */
+  // Campos entre chaves são preenchidos com os dados da reserva e do locatário.
+  C.CONTRATO_VARIAVEIS = {
+    codigo: 'Código da reserva', locatario_nome: 'Nome do locatário', locatario_cpf: 'CPF do locatário',
+    locatario_rg: 'RG do locatário', locatario_endereco: 'Endereço do locatário', locatario_telefone: 'Telefone do locatário',
+    locatario_email: 'E-mail do locatário', locador_nome: 'Nome do proprietário', locador_documento: 'CPF/CNPJ do proprietário',
+    imovel: 'Nome do imóvel', imovel_endereco: 'Endereço do imóvel', cidade: 'Cidade', capacidade: 'Capacidade',
+    hospedes: 'Número de hóspedes', entrada: 'Data de entrada', saida: 'Data de saída', checkin: 'Horário de entrada',
+    checkout: 'Horário de saída', noites: 'Noites', valor_total: 'Valor total', valor_pago: 'Valor já pago',
+    valor_restante: 'Valor a pagar', forma_pagamento: 'Forma de pagamento', caucao: 'Valor da caução',
+    politica: 'Política de cancelamento', regras: 'Regras da casa', data: 'Data da assinatura',
+  };
+  C.CONTRATO_PADRAO = `CONTRATO DE LOCAÇÃO PARA TEMPORADA
+Reserva {codigo}
+
+LOCADOR: {locador_nome}, inscrito no CPF/CNPJ sob o nº {locador_documento}.
+
+LOCATÁRIO: {locatario_nome}, inscrito no CPF sob o nº {locatario_cpf}, RG {locatario_rg}, residente em {locatario_endereco}, telefone {locatario_telefone}.
+
+As partes acima celebram este contrato de locação para temporada, nos termos dos artigos 48 a 50 da Lei nº 8.245/1991, mediante as cláusulas a seguir.
+
+CLÁUSULA 1 – DO IMÓVEL
+O objeto deste contrato é o imóvel {imovel}, localizado em {imovel_endereco}, entregue mobiliado e em perfeitas condições de uso, destinado exclusivamente à hospedagem e ao lazer do LOCATÁRIO e de seus acompanhantes.
+
+CLÁUSULA 2 – DO PERÍODO
+A locação vale de {entrada}, com entrada a partir das {checkin}, até {saida}, com saída até as {checkout}, totalizando {noites} noite(s). A permanência além do horário de saída sem autorização do LOCADOR será cobrada como diária adicional.
+
+CLÁUSULA 3 – DOS HÓSPEDES
+O imóvel será ocupado por até {hospedes} pessoa(s), respeitada a capacidade máxima do imóvel. A presença de pessoas além do combinado depende de autorização prévia do LOCADOR e pode gerar cobrança adicional.
+
+CLÁUSULA 4 – DO VALOR E DO PAGAMENTO
+O valor total da locação é de {valor_total}. Já foi pago {valor_pago} ({forma_pagamento}). O valor restante de {valor_restante} deve ser pago até o momento da entrada no imóvel.
+
+CLÁUSULA 5 – DA CAUÇÃO
+O LOCATÁRIO entrega ao LOCADOR uma caução de {caucao}, como garantia. A caução não faz parte do valor da locação e será devolvida integralmente após a saída, depois da vistoria do imóvel. Danos, quebras, falta de itens, sujeira excessiva ou descumprimento das regras da casa serão descontados da caução. Se o prejuízo for maior que a caução, o LOCATÁRIO pagará a diferença.
+
+CLÁUSULA 6 – DAS OBRIGAÇÕES DO LOCATÁRIO
+O LOCATÁRIO se compromete a: (a) usar o imóvel com cuidado e devolvê-lo nas mesmas condições em que recebeu; (b) respeitar as regras da casa e a vizinhança; (c) responder pelos atos de todos os seus acompanhantes e visitantes; (d) não sublocar nem ceder o imóvel a terceiros; (e) comunicar ao LOCADOR qualquer dano ou defeito assim que for percebido.
+
+CLÁUSULA 7 – DAS REGRAS DA CASA
+{regras}
+
+CLÁUSULA 8 – DA PISCINA E DAS ÁREAS DE LAZER
+O uso da piscina, da hidromassagem e das demais áreas de lazer é de inteira responsabilidade do LOCATÁRIO. Crianças devem estar sempre acompanhadas de um adulto responsável. O LOCADOR não se responsabiliza por acidentes decorrentes do uso inadequado dessas áreas.
+
+CLÁUSULA 9 – DO CANCELAMENTO
+{politica}
+
+CLÁUSULA 10 – DOS OBJETOS PESSOAIS
+O LOCADOR não se responsabiliza por objetos pessoais, valores ou veículos do LOCATÁRIO e de seus acompanhantes deixados no imóvel.
+
+CLÁUSULA 11 – DA ASSINATURA ELETRÔNICA
+As partes reconhecem a validade da assinatura eletrônica deste contrato, nos termos da Medida Provisória nº 2.200-2/2001 e da Lei nº 14.063/2020. O registro de data, hora, endereço IP e código de verificação anexado a este documento comprova a assinatura do LOCATÁRIO.
+
+CLÁUSULA 12 – DO FORO
+Fica eleito o foro da comarca do imóvel para resolver qualquer questão relacionada a este contrato.
+
+{cidade}, {data}.`;
+  // Troca cada {campo} pelo valor; campo vazio vira uma linha para preencher.
+  C.contratoTexto = (modelo, v) => String(modelo || '').replace(/\{(\w+)\}/g, (m, k) => {
+    if (!(k in (v || {}))) return m;
+    const x = v[k];
+    return x == null || String(x).trim() === '' ? '________________' : String(x);
+  });
+
   C.padrao = () => {
     const ano = Number(C.hoje().slice(0, 4));
     return {
@@ -117,6 +182,13 @@
           politica: '',
         },
       },
+      contrato: {
+        ativo: false,
+        prazoHoras: 48,          // assinar até X horas antes da entrada
+        locadorNome: '',
+        locadorDocumento: '',    // CPF ou CNPJ do proprietário
+        modelo: C.CONTRATO_PADRAO,
+      },
       feriados: [...C.feriadosDoAno(ano), ...C.feriadosDoAno(ano + 1)],
       fotos: [],     // { arquivo, legenda }
       reservas: [],  // { id, inicio, fim, status, priv }
@@ -146,6 +218,7 @@
     out.site = { ...p.site, ...(d.site || {}) };
     out.precos = { ...p.precos, ...(d.precos || {}) };
     out.precos.online = { ...p.precos.online, ...((d.precos && d.precos.online) || {}) };
+    out.contrato = { ...p.contrato, ...(d.contrato || {}) };
     ['feriados', 'fotos', 'reservas'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = p[k]; });
     return out;
   };

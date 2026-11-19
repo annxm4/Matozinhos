@@ -20,6 +20,7 @@ export default rota(async (req, res) => {
     d.reservas = (d.reservas || []).map(({ id, inicio, fim, status }) => ({ id, inicio, fim, status }));
     (await reservasAtivas()).forEach((r) => d.reservas.push({ id: r.id, inicio: r.inicio, fim: r.fim, status: 'confirmada' }));
     if (d.precos && d.precos.online) delete d.precos.online.handle;
+    delete d.contrato; // modelo e documento do proprietário ficam só no painel e no link do contrato
     return enviar(res, 200, d, { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' });
   }
 

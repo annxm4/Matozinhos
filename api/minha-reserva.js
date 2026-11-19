@@ -2,6 +2,7 @@
 // O cliente consulta a própria reserva com o código + telefone usado na reserva.
 import { rota, enviar, lerCorpo, preparar, sql } from '../lib/servidor.js';
 import { C, carregarSite, digitos, statusEfetivo, confirmarPagamento } from '../lib/reservas.js';
+import { garantirContrato, prazoAssinatura } from '../lib/contratos.js';
 
 export default rota(async (req, res) => {
   if (req.method !== 'POST') return enviar(res, 405, { erro: 'Método não permitido.' });
@@ -20,6 +21,11 @@ export default rota(async (req, res) => {
   }
   const D = await carregarSite();
   const S = D.site, st = statusEfetivo(r);
+  let contrato = null;
+  try {
+    const c = await garantirContrato(r, D);
+    if (c) contrato = { token: c.token, status: c.status, prazo: prazoAssinatura(r, D).toISOString() };
+  } catch (e) { console.error(e); }
   const total = Number(r.total), pago = Number(r.valor_pago);
   enviar(res, 200, {
     codigo: r.codigo, status: st, inicio: r.inicio, fim: r.fim, noites: C.noites(r.inicio, r.fim),
@@ -28,6 +34,7 @@ export default rota(async (req, res) => {
     restante: r.modo === 'caucao' ? total : Math.max(0, total - pago),
     pagarUrl: st === 'aguardando' ? r.checkout_url : null,
     expira: r.expira_em,
+    contrato,
     pagamento: r.pagamento ? { metodo: r.pagamento.capture_method, parcelas: r.pagamento.installments } : null,
     site: {
       nome: S.nome, cidade: S.cidade, whatsapp: S.whatsapp,

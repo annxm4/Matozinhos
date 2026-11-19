@@ -16,6 +16,15 @@ Site de aluguel do sítio. Hospedado na **Vercel**, com os dados no **Neon** (Po
 4. Estornos e cancelamentos de pagamento são feitos no app da InfinitePay (a API não oferece).
 
 A InfinitePay não tem ambiente de testes: teste com uma reserva real de R$ 1,00 e estorne pelo app.
+
+## Contrato de locação
+
+1. No painel, aba **Preços → Contrato de locação**: ligue a opção, preencha seu nome e CPF/CNPJ, o prazo (horas antes da entrada) e revise o modelo. Campos como `{locatario_nome}` e `{valor_total}` são preenchidos sozinhos.
+2. Com o pagamento confirmado, o contrato da reserva é gerado (modelo congelado naquele momento) com um link único `contrato.html?t=…`.
+3. Na aba **Reservas**, cada reserva paga mostra o status do contrato e os botões **Enviar contrato** (WhatsApp), **Copiar link** e **Ver contrato**. O cliente também vê **Assinar contrato** em `reserva.html`.
+4. O cliente confere o texto, preenche CPF e endereço e assina com o dedo. O site guarda o texto final, a assinatura, data/hora, IP, navegador e um código SHA-256; a página assinada pode ser salva em PDF.
+
+Arquivos: `contrato.html`, `js/contrato.js`, `api/contrato.js` e `lib/contratos.js` (tabela `contratos`).
 - `lib/servidor.js` – conexão com o Neon, criação das tabelas e sessão do painel.
 - `data/site.json` – dados iniciais, importados uma vez para o banco com `npm run db:migrar`.
 

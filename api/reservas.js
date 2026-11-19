@@ -2,7 +2,8 @@
 // GET   /api/reservas                         -> lista
 // PATCH /api/reservas { id, acao: 'confirmar' | 'cancelar' }
 import { rota, enviar, lerCorpo, autenticado, preparar, sql } from '../lib/servidor.js';
-import { statusEfetivo } from '../lib/reservas.js';
+import { statusEfetivo, carregarSite } from '../lib/reservas.js';
+import { garantirContrato, prazoAssinatura } from '../lib/contratos.js';
 
 export default rota(async (req, res) => {
   if (!autenticado(req)) return enviar(res, 401, { erro: 'Sessão expirada. Entre novamente.' });
@@ -13,9 +14,24 @@ export default rota(async (req, res) => {
     const linhas = await q`SELECT id, codigo, inicio, fim, status, nome, telefone, email, hospedes, obs, modo,
       total, valor_cobrado, valor_pago, pagamento, expira_em, criado FROM reservas_online
       WHERE fim >= to_char(now() - interval '180 days', 'YYYY-MM-DD') ORDER BY inicio`;
-    return enviar(res, 200, linhas.map((r) => ({
-      ...r, status: statusEfetivo(r), total: Number(r.total), valor_cobrado: Number(r.valor_cobrado), valor_pago: Number(r.valor_pago),
-    })), { 'Cache-Control': 'no-store' });
+    // Gera o contrato das reservas pagas que ainda não têm (contrato ligado no painel).
+    const D = await carregarSite();
+    const contratos = new Map((await q`SELECT reserva_id, token, status, assinado_em FROM contratos`).map((c) => [c.reserva_id, c]));
+    if (D.contrato && D.contrato.ativo) {
+      for (const r of linhas) {
+        if (r.status === 'confirmada' && !contratos.has(r.id) && r.fim >= new Date().toISOString().slice(0, 10)) {
+          const c = await garantirContrato(r, D);
+          if (c) contratos.set(r.id, c);
+        }
+      }
+    }
+    return enviar(res, 200, linhas.map((r) => {
+      const c = contratos.get(r.id);
+      return {
+        ...r, status: statusEfetivo(r), total: Number(r.total), valor_cobrado: Number(r.valor_cobrado), valor_pago: Number(r.valor_pago),
+        contrato: c ? { token: c.token, status: c.status, assinado_em: c.assinado_em, prazo: prazoAssinatura(r, D).toISOString() } : null,
+      };
+    }), { 'Cache-Control': 'no-store' });
   }
 
   if (req.method === 'PATCH') {
