@@ -67,9 +67,13 @@ function resposta(c, r, D) {
   const base = {
     status: c.status, codigo: r.codigo, inicio: r.inicio, fim: r.fim,
     site: { nome: D.site.nome, whatsapp: D.site.whatsapp },
+    locador: c.locador || {}, emitido_em: c.criado,
   };
   if (c.status === 'assinado') {
-    return { ...base, texto: c.texto, dados: c.dados, assinatura: c.assinatura,
+    // Confere se o que está guardado ainda bate com o código de verificação gerado na assinatura.
+    const assinadoEm = new Date(c.assinado_em).toISOString();
+    const integro = hashContrato({ texto: c.texto, dados: c.dados, assinatura: c.assinatura, assinado_em: assinadoEm, ip: c.ip, codigo: r.codigo }) === c.hash;
+    return { ...base, texto: c.texto, dados: c.dados, assinatura: c.assinatura, integro,
       registro: { assinado_em: c.assinado_em, ip: c.ip, navegador: c.navegador, hash: c.hash } };
   }
   return { ...base, modelo: c.modelo, variaveis: variaveis(r, D, c), prazo: prazoAssinatura(r, D).toISOString(),

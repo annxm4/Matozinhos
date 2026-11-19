@@ -1,157 +1,184 @@
-// Página do contrato: o locatário lê, preenche os dados, assina no quadro e baixa a cópia assinada.
+// Página do contrato: documento em folha inteira, quadros de assinatura no fim e formulário para assinar.
 (function () {
   const C = window.Sitio, esc = C.esc;
   const $ = (s) => document.querySelector(s);
+  const app = $('#ctApp');
   const token = new URLSearchParams(location.search).get('t') || '';
-  let dados = null, desenhou = false;
+  let d = null, desenhou = false;
 
-  const dataHora = (iso) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'long', timeStyle: 'short' }).format(new Date(iso));
+  const dataHora = (iso) => (iso ? new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '—');
   const mascaraCpf = (v) => v.replace(/\D/g, '').slice(0, 11).replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  const estado = (msg) => { app.innerHTML = `<div class="ct-estado"><p>${esc(msg)}</p></div>`; };
 
-  async function carregar() {
-    try {
-      const r = await fetch('api/contrato?t=' + encodeURIComponent(token), { cache: 'no-store' });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.erro || 'Não foi possível abrir o contrato agora.');
-      dados = j;
-      mostrar();
-    } catch (e) {
-      $('#ctTitulo').textContent = 'Contrato não encontrado';
-      $('#ctErroGeral').textContent = e.message;
+  // Texto do contrato -> documento: título, subtítulo, cláusulas, parágrafos, itens numerados e local/data.
+  function documento(texto) {
+    const blocos = String(texto || '').replace(/\r/g, '').split(/\n\s*\n/).map((b) => b.split('\n').map((l) => l.trim()).filter(Boolean)).filter((b) => b.length);
+    const titulo = (l) => /^CLÁUSULA\b/i.test(l) || (l.length >= 8 && l.length <= 90 && /\s/.test(l) && /[A-ZÀ-Ú]/.test(l) && !/[a-zà-ú]/.test(l));
+    const rotulo = (l) => {
+      const m = /^([A-ZÀ-Ú][A-ZÀ-Ú\s]{2,30}):\s*(.*)$/.exec(l);
+      return m ? `<b>${esc(m[1])}:</b> ${esc(m[2])}` : esc(l);
+    };
+    let html = '';
+    blocos.forEach((linhas, i) => {
+      linhas.forEach((l, j) => {
+        if (i === 0 && j === 0) html += `<h1>${esc(l)}</h1>`;
+        else if (i === 0) html += `<p class="ct-sub">${esc(l)}</p>`;
+        else if (titulo(l)) html += `<h3>${esc(l)}</h3>`;
+        else if (/^\d+[.)]\s/.test(l)) html += `<p class="ct-item">${esc(l)}</p>`;
+        else if (i === blocos.length - 1 && linhas.length === 1 && l.length < 90) html += `<p class="ct-local">${esc(l)}</p>`;
+        else html += `<p>${rotulo(l)}</p>`;
+      });
+    });
+    return html;
+  }
+
+  function assinaturas() {
+    const loc = d.locador || {}, assinado = d.status === 'assinado';
+    return `<div class="ct-assinaturas">
+      <div class="ct-assin"><h4>Locador</h4>
+        <div class="ct-assin-nome">${esc(loc.nome || '—')}</div>
+        ${loc.documento ? `<small>CPF/CNPJ ${esc(loc.documento)}</small>` : ''}
+        <small>Contrato emitido eletronicamente em ${dataHora(d.emitido_em)}</small></div>
+      <div class="ct-assin"><h4>Locatário</h4>
+        ${assinado ? `<img src="${esc(d.assinatura)}" alt="Assinatura de ${esc(d.dados.nome)}">
+          <div class="ct-assin-nome">${esc(d.dados.nome)}</div>
+          <small>CPF ${esc(d.dados.cpf)}</small>
+          <small>Assinado eletronicamente em ${dataHora(d.registro.assinado_em)} · IP ${esc(d.registro.ip || '—')}</small>
+          <small>Dispositivo: ${esc(d.registro.navegador || '—')}</small>`
+        : '<div class="ct-pendente">Aguardando assinatura</div>'}</div>
+    </div>
+    ${assinado ? `<div class="ct-hash">Código de verificação do documento (SHA-256): ${esc(d.registro.hash)}</div>` : ''}`;
+  }
+
+  function aviso() {
+    if (d.status === 'assinado') {
+      return d.integro === false
+        ? '<div class="ct-aviso ruim">⚠ O texto guardado não confere com o código de verificação. Fale com o proprietário.</div>'
+        : `<div class="ct-aviso ok">✅ Contrato assinado em ${dataHora(d.registro.assinado_em)}. Guarde uma cópia: use o botão <b>Imprimir / salvar PDF</b>.</div>`;
     }
+    if (d.cancelada) return '<div class="ct-aviso ruim">Esta reserva foi cancelada. O contrato não pode mais ser assinado.</div>';
+    const atrasado = new Date(d.prazo) < new Date();
+    return atrasado
+      ? `<div class="ct-aviso ruim">⏰ O prazo para assinar era ${dataHora(d.prazo)}. Assine agora: a entrada no imóvel depende do contrato assinado.</div>`
+      : `<div class="ct-aviso">📄 Leia o contrato com atenção. No fim da página, preencha seus dados e assine na tela. Prazo: até <b>${dataHora(d.prazo)}</b>.</div>`;
   }
 
-  function status(cls, titulo, texto) {
-    const el = $('#ctStatus');
-    el.className = 'mr-status mr-' + cls;
-    el.innerHTML = `<strong>${esc(titulo)}</strong>${texto ? `<p>${esc(texto)}</p>` : ''}`;
-  }
-
-  // Pré-visualização: o modelo é preenchido com o que o locatário digita (o servidor refaz ao assinar).
-  function previa() {
-    const v = { ...dados.variaveis };
-    const nome = $('#ctNome').value.trim(), cpf = $('#ctCpf').value.trim(), rg = $('#ctRg').value.trim(), end = $('#ctEnd').value.trim();
+  // Na pré-visualização, o que o locatário digita já aparece no texto (o servidor refaz tudo ao assinar).
+  function textoAtual() {
+    if (d.status === 'assinado') return d.texto;
+    const v = { ...d.variaveis };
+    const nome = $('#aNome') && $('#aNome').value.trim();
     if (nome) v.locatario_nome = nome;
-    v.locatario_cpf = cpf; v.locatario_rg = rg; v.locatario_endereco = end;
-    $('#ctTexto').textContent = C.contratoTexto(dados.modelo, v);
+    if ($('#aCpf')) { v.locatario_cpf = $('#aCpf').value.trim(); v.locatario_rg = $('#aRg').value.trim(); v.locatario_endereco = $('#aEnd').value.trim(); }
+    return C.contratoTexto(d.modelo, v);
   }
 
   function mostrar() {
-    $('#ctConteudo').hidden = false;
-    document.title = `Contrato · Reserva ${dados.codigo}`;
-    if (dados.status === 'assinado') return mostrarAssinado();
-    $('#ctTitulo').textContent = `Reserva ${dados.codigo}`;
-    if (dados.cancelada) {
-      status('ruim', 'Reserva cancelada', 'Este contrato não pode mais ser assinado.');
-      $('#ctTexto').textContent = C.contratoTexto(dados.modelo, dados.variaveis);
-      return;
-    }
-    const atrasado = new Date(dados.prazo) < new Date();
-    status('espera', 'Contrato aguardando sua assinatura',
-      atrasado ? 'O prazo para assinar já passou. Assine agora para liberar sua entrada.'
-        : `Leia com atenção e assine até ${dataHora(dados.prazo)}. A entrada no imóvel depende do contrato assinado.`);
-    $('#ctNome').value = dados.variaveis.locatario_nome || '';
-    $('#fAssinar').hidden = false;
-    previa();
-    prepararQuadro();
+    const assinado = d.status === 'assinado', pode = !assinado && !d.cancelada;
+    document.title = `Contrato · Reserva ${d.codigo}`;
+    $('#ctNumero').textContent = `Reserva ${d.codigo}`;
+    $('#ctMarca').textContent = d.site.nome || 'Início';
+    app.innerHTML = `
+      ${aviso()}
+      <article class="ct-papel"><div class="ct-doc" id="ctDoc"></div>${assinaturas()}</article>
+      ${pode ? `
+      <section class="ct-assinar" id="ctAssinar">
+        <h2>Assinatura eletrônica</h2>
+        <p class="sub">Preencha seus dados (eles entram no contrato acima) e assine no quadro. Registramos data, hora, IP e dispositivo como prova da assinatura.</p>
+        <div class="ct-linha">
+          <label>Nome completo<input type="text" id="aNome" maxlength="120" autocomplete="name" value="${esc(d.variaveis.locatario_nome || '')}"></label>
+          <label>CPF<input type="text" id="aCpf" maxlength="14" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></label>
+        </div>
+        <div class="ct-linha">
+          <label>Endereço completo<input type="text" id="aEnd" maxlength="250" placeholder="Rua, número, bairro, cidade – UF" autocomplete="street-address"></label>
+          <label>RG (opcional)<input type="text" id="aRg" maxlength="30" autocomplete="off"></label>
+        </div>
+        <span class="ct-rot">Assinatura <small>(desenhe com o dedo ou o mouse)</small></span>
+        <div class="ct-quadro"><canvas id="aCanvas" aria-label="Quadro de assinatura"></canvas><div class="ct-dica" id="aDica">Assine aqui</div><button type="button" class="ct-limpar" id="aLimpar">Limpar</button></div>
+        <label class="ct-aceite"><input type="checkbox" id="aAceite"><span>Li e concordo com todas as cláusulas deste contrato e reconheço a validade desta assinatura eletrônica.</span></label>
+        <button type="button" class="btn btn-destaque btn-cheio" id="aAssinar" disabled>Assinar contrato</button>
+        <p class="erro" id="aErro" role="alert"></p>
+        <p class="ct-lgpd">Seus dados (nome, CPF, RG, endereço, assinatura, data, hora e IP) são usados apenas para este contrato, conforme a LGPD.</p>
+      </section>` : ''}
+      <div class="ct-acoes"><button type="button" class="btn btn-linha" id="ctImprimir">🖨 Imprimir / salvar PDF</button></div>`;
+    $('#ctDoc').innerHTML = documento(textoAtual());
+    $('#ctImprimir').onclick = () => window.print();
+    if (pode) ligarAssinatura();
   }
 
-  function mostrarAssinado() {
-    $('#ctTitulo').textContent = 'Contrato assinado';
-    status('ok', 'Contrato assinado', `Assinado em ${dataHora(dados.registro.assinado_em)}. Guarde uma cópia.`);
-    $('#ctTexto').textContent = dados.texto;
-    $('#fAssinar').hidden = true;
-    const el = $('#ctAssinado');
-    el.hidden = false;
-    el.innerHTML = `
-      <div class="assinatura-final">
-        <img src="${esc(dados.assinatura)}" alt="Assinatura de ${esc(dados.dados.nome)}">
-        <p><b>${esc(dados.dados.nome)}</b><br>CPF ${esc(dados.dados.cpf)}<br>Locatário</p>
-      </div>
-      <div class="registro">
-        <strong>Registro da assinatura eletrônica</strong>
-        <dl>
-          <dt>Reserva</dt><dd>${esc(dados.codigo)}</dd>
-          <dt>Assinado por</dt><dd>${esc(dados.dados.nome)} · CPF ${esc(dados.dados.cpf)}</dd>
-          <dt>Data e hora</dt><dd>${esc(dataHora(dados.registro.assinado_em))} (horário de Brasília)</dd>
-          <dt>Endereço IP</dt><dd>${esc(dados.registro.ip || '—')}</dd>
-          <dt>Navegador</dt><dd class="miudo">${esc(dados.registro.navegador || '—')}</dd>
-          <dt>Código de verificação (SHA-256)</dt><dd class="miudo hash">${esc(dados.registro.hash)}</dd>
-        </dl>
-      </div>
-      <button type="button" class="btn btn-destaque btn-cheio sem-impressao" id="ctBaixar">Baixar PDF / imprimir</button>
-      <p class="dica-pag sem-impressao">No celular, toque em “Baixar PDF” e escolha “Salvar como PDF”.</p>`;
-    $('#ctBaixar').onclick = () => window.print();
-  }
-
-  /* ---------- Quadro de assinatura ---------- */
-  function prepararQuadro() {
-    const cv = $('#ctCanvas'), ctx = cv.getContext('2d');
-    let desenhando = false, ultimo = null;
+  function ligarAssinatura() {
+    const cv = $('#aCanvas'), ctx = cv.getContext('2d'), dica = $('#aDica'), bt = $('#aAssinar'), aceite = $('#aAceite');
+    let ativo = false, ultimo = null;
+    const atualizar = () => { bt.disabled = !(desenhou && aceite.checked); };
     function ajustar() {
       const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
       cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1b2a4a';
-      desenhou = false;
+      desenhou = false; dica.style.display = ''; atualizar();
     }
     const ponto = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-    cv.addEventListener('pointerdown', (e) => {
-      e.preventDefault(); cv.setPointerCapture(e.pointerId);
-      desenhando = true; ultimo = ponto(e);
-      ctx.beginPath(); ctx.arc(ultimo.x, ultimo.y, 1.1, 0, Math.PI * 2); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
-    });
+    cv.addEventListener('pointerdown', (e) => { e.preventDefault(); cv.setPointerCapture(e.pointerId); ativo = true; ultimo = ponto(e); });
     cv.addEventListener('pointermove', (e) => {
-      if (!desenhando) return;
+      if (!ativo) return;
       const p = ponto(e);
       ctx.beginPath(); ctx.moveTo(ultimo.x, ultimo.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-      ultimo = p; desenhou = true;
+      ultimo = p;
+      if (!desenhou) { desenhou = true; dica.style.display = 'none'; atualizar(); }
     });
-    const parar = () => { desenhando = false; };
-    cv.addEventListener('pointerup', parar); cv.addEventListener('pointercancel', parar);
-    $('#ctLimpar').onclick = ajustar;
+    ['pointerup', 'pointercancel'].forEach((t) => cv.addEventListener(t, () => { ativo = false; }));
+    $('#aLimpar').onclick = ajustar;
+    aceite.addEventListener('change', atualizar);
     let w = window.innerWidth;
-    window.addEventListener('resize', () => { if (window.innerWidth !== w) { w = window.innerWidth; ajustar(); } });
+    window.addEventListener('resize', () => { if (window.innerWidth !== w) { w = window.innerWidth; if (!desenhou) ajustar(); } });
     ajustar();
+
+    const previa = () => { $('#ctDoc').innerHTML = documento(textoAtual()); };
+    ['#aNome', '#aRg', '#aEnd'].forEach((s) => $(s).addEventListener('input', previa));
+    $('#aCpf').addEventListener('input', (e) => { e.target.value = mascaraCpf(e.target.value); previa(); });
+
+    bt.addEventListener('click', async () => {
+      const erro = $('#aErro');
+      erro.textContent = '';
+      if (!confirm('Confirmar a assinatura deste contrato?')) return;
+      bt.disabled = true; bt.textContent = 'Assinando…';
+      try {
+        const r = await fetch('api/contrato', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ t: token, nome: $('#aNome').value, cpf: $('#aCpf').value, rg: $('#aRg').value,
+            endereco: $('#aEnd').value, aceite: aceite.checked, assinatura: imagemAssinatura(cv) }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.erro || 'Não foi possível assinar agora. Tente de novo.');
+        d = j;
+        mostrar();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) {
+        erro.textContent = e.message;
+        bt.disabled = false; bt.textContent = 'Assinar contrato';
+      }
+    });
   }
 
-  // Assinatura em PNG com fundo branco, recortada e reduzida para não pesar.
-  function imagemAssinatura() {
-    const cv = $('#ctCanvas'), out = document.createElement('canvas');
-    const larg = Math.min(cv.width, 900), esc2 = larg / cv.width;
-    out.width = larg; out.height = Math.round(cv.height * esc2);
+  // Assinatura em PNG com fundo branco e largura limitada, para não pesar.
+  function imagemAssinatura(cv) {
+    const out = document.createElement('canvas'), larg = Math.min(cv.width, 900), k = larg / cv.width;
+    out.width = larg; out.height = Math.round(cv.height * k);
     const o = out.getContext('2d');
     o.fillStyle = '#fff'; o.fillRect(0, 0, out.width, out.height);
     o.drawImage(cv, 0, 0, out.width, out.height);
     return out.toDataURL('image/png');
   }
 
-  ['#ctNome', '#ctCpf', '#ctRg', '#ctEnd'].forEach((s) => $(s).addEventListener('input', previa));
-  $('#ctCpf').addEventListener('input', (e) => { e.target.value = mascaraCpf(e.target.value); previa(); });
-
-  $('#fAssinar').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    $('#ctErro').textContent = '';
-    if (!desenhou) { $('#ctErro').textContent = 'Faça sua assinatura no quadro.'; return; }
-    const bt = $('#ctAssinar');
-    bt.disabled = true; bt.textContent = 'Assinando…';
+  async function carregar() {
+    if (!token) return estado('Link incompleto. Abra o contrato pelo link que você recebeu.');
     try {
-      const r = await fetch('api/contrato', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ t: token, nome: $('#ctNome').value, cpf: $('#ctCpf').value, rg: $('#ctRg').value,
-          endereco: $('#ctEnd').value, aceite: $('#ctAceite').checked, assinatura: imagemAssinatura() }),
-      });
+      const r = await fetch('api/contrato?t=' + encodeURIComponent(token), { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.erro || 'Não foi possível assinar agora. Tente de novo.');
-      dados = j;
-      mostrarAssinado();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      $('#ctErro').textContent = err.message;
-      bt.disabled = false; bt.textContent = 'Assinar contrato';
-    }
-  });
-
-  if (!token) { $('#ctTitulo').textContent = 'Link incompleto'; $('#ctErroGeral').textContent = 'Abra o contrato pelo link que você recebeu.'; }
-  else carregar();
+      if (!r.ok) return estado(j.erro || 'Contrato não encontrado.');
+      d = j;
+      mostrar();
+    } catch (e) { estado('Não foi possível carregar o contrato. Verifique sua conexão e tente de novo.'); }
+  }
+  carregar();
 })();
